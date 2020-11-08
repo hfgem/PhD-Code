@@ -1,2 +1,2 @@
 # PhD_Code
- Collection of code written over the course of my PhD.
+ This repository contains a collection of code written over the course of my PhD.
