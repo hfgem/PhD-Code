@@ -48,7 +48,12 @@ end
 clear i num_pts1 x_pts1 y_pts1 j num_pts2 x_pts2 y_pts2 x_mat1 x_mat2 ...
     x_diff y_mat1 y_mat2 y_diff all_dist min_dist1 min_dist2 w_avg_min_dist
 %compute factor
-factor = avg_min_dist_by_dens.*sqrt(dens);
+dens_mat = dens'*ones(size(dens));
+a_term = dens_mat./sqrt(dens_mat');
+b_term = dens_mat'./sqrt(dens_mat);
+c_term = dens_mat + dens_mat';
+dens_rel = (a_term + b_term)./c_term;
+factor = avg_min_dist_by_dens./dens_rel;
 x = reshape(factor,1,[]);
 %histogram
 figure;
@@ -94,8 +99,14 @@ clear i x_1 y_1 n_1 j x_2 y_2 n_2 x_mat1 y_mat1 x_mat2 y_mat2 x_diff ...
     y_diff all_dist min_dist1 min_dist2 w_avg_min_dist
 % dist = hexagonal_dist(hex_ind,s,dens);
 %compute factor
-factor = avg_min_dist_by_dens.*sqrt(dens);
+dens_mat = dens'*ones(size(dens));
+a_term = dens_mat./sqrt(dens_mat');
+b_term = dens_mat'./sqrt(dens_mat);
+c_term = dens_mat + dens_mat';
+dens_rel = (a_term + b_term)./c_term;
+factor = avg_min_dist_by_dens./dens_rel;
 x = reshape(factor,1,[]);
+x(x == 0) = []; %by the current scheme, the same-density clouds are exactly the same so the average minimum distances are 0, resulting in factor values of 0.
 %histogram
 figure;
 histogram(x,num_dens)
