@@ -1,24 +1,27 @@
 # Rotation 3
- This repository contains code written in Matlab during my third rotation. The goal is to simulate replay spike trains and show that orthagonality is possible within a non-spatial and randomized model of neurons.
+
+Author: Hannah Germaine
+
+Summary: This repository contains code written in Matlab during my third rotation. The goal is to simulate replay spike trains and show that orthagonality is possible within a non-spatial and randomized model of neurons.
+
+Detail: The model used in this research is a leaky integrate and fire (LIF) model with spike rate adaptation (SRA) (\cite{miller}). The network is made up of neurons placed in randomly generated clusters, with sparse connectivity, and both excitatory and inhibitory connections. The primary governing equations are as follows:
  
- The model used in this research is a leaky integrate and fire (LIF) model with spike rate adaptation (SRA) (\cite{miller}). The network is made up of neurons placed in randomly generated clusters, with sparse connectivity, and both excitatory and inhibitory connections. The primary governing equations are as follows:
+![Equations](https://github.com/hfgem/PhD-Code/tree/master/rotation_3/images/equations.png)
  
- ![Equations](https://github.com/hfgem/PhD-Code/tree/master/rotation_3/images/equations.png)
+Where V_m denotes the membrane potential, V_{reset} the reset membrane potential for the LIF implementation, G_{SRA} denotes the spike rate adaptation conductance, Delta G_{SRA} is a step increase for spike rate adaptation, G_{synE} and G_{synI} are the synaptic conductances specific to excitatory connections and inhibitory connections (respectively), Delta G_{synE/I} are the step increases for the synaptic conductances, C_m is the membrane capacitance, G_L is the leak conductance, E_L is the leak reversal potential, E_K is the potassium reversal potential (associated with the spike rate adaptation current), I_{syn} is the synaptic current, I_{app} is an externally applied current, tau_{SRA} is the spike rate adaptation decay constant, tau_{synE/I} are the synaptic decay time constants associated with the excitatory and inhibitory conductances respectively, and E_{synE/I} are the reversal potentials for excitatory and inhibitory currents respectively.
  
- Where V_m denotes the membrane potential, V_{reset} the reset membrane potential for the LIF implementation, G_{SRA} denotes the spike rate adaptation conductance, Delta G_{SRA} is a step increase for spike rate adaptation, G_{synE} and G_{synI} are the synaptic conductances specific to excitatory connections and inhibitory connections (respectively), Delta G_{synE/I} are the step increases for the synaptic conductances, C_m is the membrane capacitance, G_L is the leak conductance, E_L is the leak reversal potential, E_K is the potassium reversal potential (associated with the spike rate adaptation current), I_{syn} is the synaptic current, I_{app} is an externally applied current, tau_{SRA} is the spike rate adaptation decay constant, tau_{synE/I} are the synaptic decay time constants associated with the excitatory and inhibitory conductances respectively, and E_{synE/I} are the reversal potentials for excitatory and inhibitory currents respectively.
+To simplify the membrane potential calculations at each timestep, we use an integration method where we calculate the "steady state" membrane potential at each timestep:
  
- To simplify the membrane potential calculations at each timestep, we use an integration method where we calculate the "steady state" membrane potential at each timestep:
+![Simplified V_m](https://github.com/hfgem/PhD-Code/tree/master/rotation_3/images/simplified_V_m.png)
  
- ![Simplified V_m](https://github.com/hfgem/PhD-Code/tree/master/rotation_3/images/simplified_V_m.png)
- 
- Here, we define V_{ss} as the current-timestep "steady state" membrane potential, and tau_m as the timescale at which the membrane potential changes.
+Here, we define V_{ss} as the current-timestep "steady state" membrane potential, and tau_m as the timescale at which the membrane potential changes.
  
 
- ## lif_clean_code.m
- This file contains code blocks to initialize the model parameters, run the model, and analyze the model outputs. It makes use of the lif_sra_calculator.m function to run the model.
+## lif_clean_code.m
+This file contains code blocks to initialize the model parameters, run the model, and analyze the model outputs. It makes use of the lif_sra_calculator.m function to run the model.
  
- ## lif_sra_calculator.m
- This file contains the function lif_sra_calculator which runs a leaky integrate-and-fire model with spike rate adaptation (sra). The inputs are as follows:
+## lif_sra_calculator.m
+This file contains the function lif_sra_calculator which runs a leaky integrate-and-fire model with spike rate adaptation (sra). The inputs are as follows:
  * n = number of neurons in network
  * clusters = number of clusters in network
  * cluster_mat = number of neurons in a cluster
