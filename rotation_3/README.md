@@ -1,3 +1,19 @@
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+tex2jax: {
+inlineMath: [['$','$'], ['\\(','\\)']],
+processEscapes: true},
+jax: ["input/TeX","input/MathML","input/AsciiMath","output/CommonHTML"],
+extensions: ["tex2jax.js","mml2jax.js","asciimath2jax.js","MathMenu.js","MathZoom.js","AssistiveMML.js", "[Contrib]/a11y/accessibility-menu.js"],
+TeX: {
+extensions: ["AMSmath.js","AMSsymbols.js","noErrors.js","noUndefined.js"],
+equationNumbers: {
+autoNumber: "AMS"
+}
+}
+});
+</script>
+
 # Rotation 3
  This repository contains code written in Matlab during my third rotation. The goal is to simulate replay spike trains and show that orthagonality is possible within a non-spatial and randomized model of neurons.
  
@@ -5,7 +21,7 @@
  
  ![Equations](https://github.com/hfgem/PhD-Code/tree/master/rotation_3/images/equations.png)
  
- Where $V_m$ denotes the membrane potential, $V_{reset}$ the reset membrane potential for the LIF implementation, $G_{SRA}$ denotes the spike rate adaptation conductance, $\Delta G_{SRA}$ is a step increase for spike rate adaptation, $G_{synE}$ and $G_{synI}$ are the synaptic conductances specific to excitatory connections and inhibitory connections (respectively), $\Delta G_{synE/I}$ are the step increases for the synaptic conductances, $C_m$ is the membrane capacitance, $G_L$ is the leak conductance, $E_L$ is the leak reversal potential, $E_K$ is the potassium reversal potential (associated with the spike rate adaptation current), $I_{syn}$ is the synaptic current, $I_{app}$ is an externally applied current, $\tau_{SRA}$ is the spike rate adaptation decay constant, $\tau_{synE/I}$ are the synaptic decay time constants associated with the excitatory and inhibitory conductances respectively, and $E_{synE/I}$ are the reversal potentials for excitatory and inhibitory currents respectively.
+ Where V_m denotes the membrane potential, V_{reset} the reset membrane potential for the LIF implementation, G_{SRA} denotes the spike rate adaptation conductance, Delta G_{SRA} is a step increase for spike rate adaptation, G_{synE} and G_{synI} are the synaptic conductances specific to excitatory connections and inhibitory connections (respectively), Delta G_{synE/I} are the step increases for the synaptic conductances, $C_m$ is the membrane capacitance, $G_L$ is the leak conductance, $E_L$ is the leak reversal potential, $E_K$ is the potassium reversal potential (associated with the spike rate adaptation current), $I_{syn}$ is the synaptic current, $I_{app}$ is an externally applied current, $\tau_{SRA}$ is the spike rate adaptation decay constant, $\tau_{synE/I}$ are the synaptic decay time constants associated with the excitatory and inhibitory conductances respectively, and $E_{synE/I}$ are the reversal potentials for excitatory and inhibitory currents respectively.
  
  
  
