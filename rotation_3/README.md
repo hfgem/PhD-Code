@@ -4,7 +4,7 @@ Author: Hannah Germaine
 
 Summary: This repository contains code written in Matlab during my third rotation. The goal is to simulate replay spike trains and show that orthagonality is possible within a non-spatial and randomized model of neurons.
 
-Detail: The model used in this research is a leaky integrate and fire (LIF) model with spike rate adaptation (SRA) (\cite{miller}). The network is made up of neurons placed in randomly generated clusters, with sparse connectivity, and both excitatory and inhibitory connections. The primary governing equations are as follows:
+Detail: The model used in this research is a leaky integrate and fire (LIF) model with spike rate adaptation (SRA). The network is made up of neurons placed in randomly generated clusters, with sparse connectivity, and both excitatory and inhibitory connections. The primary governing equations are as follows:
  
 ![Equations](https://github.com/hfgem/PhD-Code/tree/master/rotation_3/images/equations.png)
  
