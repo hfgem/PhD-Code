@@ -15,6 +15,12 @@ To simplify the membrane potential calculations at each timestep, we use an inte
 ![Simplified V_m](https://github.com/hfgem/PhD-Code/tree/master/rotation_3/images/simplified_V_m.png)
  
 Here, we define V_{ss} as the current-timestep "steady state" membrane potential, and tau_m as the timescale at which the membrane potential changes.
+
+Network Connectivity: For n neurons, we set the number of clusters to be c = round(n/20) and the number of neurons in a cluster to be c_n = round(n/5). We achieve a sparse connectivity by setting an overall connection probability < 1, and calculating an intra-cluster connection probability as follows:
+
+![Network Probability](https://github.com/hfgem/PhD-Code/tree/master/rotation_3/images/network_probability.png)
+
+In order to create an (n x n) connectivity matrix, we first create a binary matrix of which neurons belong to which clusters ($M \in \mathbb{R}^{(c \times n)}$) by randomly permuting [1:n] and assigning the first $c_n$ terms (let it be a vector of indices $\Vec{x}$) to cluster $i$ by marking $M(i,\Vec{x}) = 1$ and all other values in that row 0. We next set the (nxn) connectivity matrix $M_{conns}$ (initially all zeros) using $M$ and $p_{clust}$ by a "lottery" mechanism. For each cluster, we have $\binom{c}{2}$ total pairs of neurons that can be connected to each other, and for each of these pairs, $(n_i, n_j)$ we calculate a random probability. If the probability is less than $p_{clust}$, the pair is marked as connected by setting $M_{conns}(n_i,n_j) = M_{conns}(n_i,n_j) + 1$, otherwise it is not connected and does not gain a $+1$. We thus loop through all clusters, generating the complete $M_{conns}$, and then remove any self-connectivity.
  
 
 ## lif_clean_code.m
