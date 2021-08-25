@@ -1,6 +1,11 @@
 function [neuron_ranks, rho_unique, ranks, rho_nonunique, ranks_mod] = calculate_trajectory_similarity(n, ...
     inits, network_spike_sequences, network_spike_ranks, non_spiking_neurons)
     %_________
+    %ABOUT: This function calculates a number of metrics of similarity
+    %between firing sequences. Specifically, it calculates Spearman's rank
+    %correlation rhos for sequences including and excluding nonfiring
+    %neurons from the ranks.
+    %
     %INPUTS:
     %   n = number of neurons in the simulation
     %   inits = number of initializations in the simulation

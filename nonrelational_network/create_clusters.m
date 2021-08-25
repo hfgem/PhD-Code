@@ -1,6 +1,10 @@
 function [cluster_mat, conns] = create_clusters(n, clusters, ...
     cluster_n, cluster_prob)
     %_________
+    %ABOUT: This function generates the network clusters and connections
+    %based on the number of neurons, number of clusters, number of neurons
+    %per cluster, and the probability of connections within a cluster.
+    %
     %INPUTS:
     %   n = number of neurons in the network
     %   clusters = number of clusters of neurons
