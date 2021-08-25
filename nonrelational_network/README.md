@@ -7,6 +7,9 @@
  ## visualize_cluster_sequences.m
  This program contains code to visualize the sequence of clusters the spike sequences move through. The code generates not only single timestep visualizations but moving summed bin visualizations, and both can be seen in both regular weight and normalized form.
  
+ ## calculate_plot_cluster_overlap.m
+ This program calculates whether neurons firing at similar timepoints to each other are primarily from the same cluster, or different clusters. To do so, we use a sliding bin across the firing data and determine the average fraction of neurons in the same cluster(s) in each bin. If the bin has only a single neuron spiking, or no spikes, it will be left out of the calculation. If the bin has neurons from multiple different clusters, the calculation will be the sum of fraction of spiking neurons firing for each cluster represented, divided by the total number of clusters represented - getting an averge overlap calculation.
+ 
  ## Functions:
  
  ### lif_sra_calculator_postrotation.m
@@ -17,3 +20,6 @@
  
  ### calculate_trajectory_similarity.m
  This function calculates a number of metrics of similarity between firing sequences. Specifically, it calculates Spearman's rank correlation rhos for sequences including and excluding nonfiring neurons from the ranks.
+ 
+ ## calculate_cluster_overlap.m
+ This function calculates the overlap of which clusters firing neurons belong to. For each event, using a sliding bin it calculates the fraction of overlap of all firing neurons for the full set of clusters they belong to.
