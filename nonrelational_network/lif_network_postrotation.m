@@ -275,17 +275,20 @@ end
 %This code block does not require any of the earlier code blocks to run. It
 %simply requires stored data from prior runs of earlier code blocks.
 
-% %Select and load data to analyze
+%Select and load data to analyze
 net_save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Network Save Folder'); %Have user input where they'd like the output stored
+slashes = find(net_save_path == '/');
+save_path = net_save_path(1:slashes(end));
+load(strcat(save_path,'/parameters.mat'))
 load(strcat(net_save_path,'/network_spike_sequences.mat'))
-load(strcat(net_save_path,'/non_spiking_neurons.mat'))
-load(strcat(net_save_path,'/network_spike_ranks.mat')) %ranks not including nonspiking
 
-[inits,n] = size(network_spike_sequences); %Grab data sizes
+[~,inits] = size(network_spike_sequences);
 
 [neuron_ranks, rho_unique, ranks, rho_nonunique, ranks_mod] = calculate_trajectory_similarity(n, ...
-    inits, network_spike_sequences, network_spike_ranks, non_spiking_neurons);
+    inits, network_spike_sequences);
 
+ranks(isnan(ranks)) = 0;
+ranks_mod(isnan(ranks_mod)) = 0;
 
 average_rank = mean(ranks(ranks~=1),'all');
 std_rank = std(ranks(ranks~=1),[],'all');
@@ -296,60 +299,80 @@ std_rank_mod = std(ranks_mod(ranks_mod~=1),[],'all');
 %This code block visualizes the sequence of clusters a particular spike
 %sequence progresses through.
 
-%Select and load specific network data to analyze
-net_save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Network Save Folder'); %Have user input where they'd like the output stored
-load(strcat(net_save_path,'/network_spike_sequences.mat'))
-load(strcat(net_save_path,'/network_cluster_sequences.mat'))
-load(strcat(net_save_path,'/network_var.mat'))
+% %Select and load specific network data to analyze
+% net_save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Network Save Folder'); %Have user input where they'd like the output stored
+% slashes = find(net_save_path == '/');
+% save_path = net_save_path(1:slashes(end));
+% load(strcat(save_path,'/parameters.mat'))
+% load(strcat(net_save_path,'/network_cluster_sequences.mat'))
+% load(strcat(net_save_path,'/network_var.mat'))
+% 
+% V_m = network_var(1).V_m;
+% spikes_V_m = V_m >= -50*10^(-3);
+% 
+% %Grab relevant information
+% [~,inits] = size(network_cluster_sequences); %Grab data sizes
+% 
+% %Visualize cluster sequences
+% seq_type = {'clusters','movsum','normalized_clusters','normalized_cluster_mov_sum'};
 
-V_m = network_var(1).V_m;
-spikes_V_m = V_m >= -50*10^(-3);
-
-%Grab relevant information
-[clusters,~] = size(network_spike_sequences); %Grab data sizes
-
-%Visualize cluster sequences
-seq_type = 'clusters'; %'movsum'; %'normalized_clusters';
-
-f3 = figure;
-subplot_n = sqrt(clusters);
-if floor(subplot_n)==subplot_n %assume non-infinite
-    subplot_x = subplot_n;
-    subplot_y = subplot_n;
-else
-    subplot_x = floor(subplot_n);
-    subplot_y = ceil(subplot_n);
+%Create image save path
+cluster_save_path = strcat(net_save_path,'/cluster_plots/');
+if ~isfolder(cluster_save_path)
+    mkdir(cluster_save_path);
 end
-clear subplot_n
-%Movsum Cluster Plots
-axes = [];
-for k = 1:clusters
-    ax = subplot(subplot_y,subplot_x,k);
-    axes(end+1) = ax; %#ok<SAGROW>
-    imagesc(network_cluster_sequences(k).movsum)
-    title(strcat('Moving Sum Cluster Sequence for #',string(k)))
-    xlabel('Binned Spike Times')
-    ylabel('Cluster Number')
+
+%Create and Save All Cluster Plots
+for s = seq_type
+    s_type = s{1};
+    for k = 1:inits
+        if ~isempty(network_cluster_sequences(k).events)
+            [num_events,~] = size(network_cluster_sequences(k).events);
+            sequences = network_cluster_sequences(k).clusters(1);
+            sequence_names = fieldnames(sequences);
+            f = figure;
+            axes = [];
+            for e_i = 1:num_events
+                ax = subplot(1,num_events,e_i);
+                axes(end+1) = ax; %#ok<SAGROW>
+                if strcmp(s_type,'clusters')
+                    imagesc(network_cluster_sequences(k).clusters.(sequence_names{e_i}))
+                    title(strcat('Event #',string(e_i)))
+                    xlabel('Spike Times')
+                    ylabel('Cluster Number')
+                elseif strcmp(s_type,'movsum')
+                    imagesc(network_cluster_sequences(k).movsum.(sequence_names{e_i}))
+                    title(strcat('Event #',string(e_i)))
+                    xlabel('Spike Times')
+                    ylabel('Cluster Number')
+                elseif strcmp(s_type,'normalized_clusters')
+                    imagesc(network_cluster_sequences(k).normalized_clusters.(sequence_names{e_i}))
+                    title(strcat('Event #',string(e_i)))
+                    xlabel('Spike Times')
+                    ylabel('Cluster Number')
+                elseif strcmp(s_type,'normalized_cluster_mov_sum')
+                    imagesc(network_cluster_sequences(k).normalized_cluster_mov_sum.(sequence_names{e_i}))
+                    title(strcat('Event #',string(e_i)))
+                    xlabel('Spike Times')
+                    ylabel('Cluster Number')
+                end    
+            end
+            if strcmp(s_type,'clusters')
+                sgtitle(strcat('Cluster Sequence for Initialization #',string(k)))
+            elseif strcmp(s_type,'movsum')
+                sgtitle(strcat('Moving Sum Cluster Sequence for Initialization #',string(k)))
+            elseif strcmp(s_type,'normalized_clusters')
+                sgtitle(strcat('Normalized Cluster Sequence for Initialization #',string(k)))
+            elseif strcmp(s_type,'normalized_cluster_mov_sum')
+                sgtitle(strcat('Normalized Moving Sum Cluster Sequence for Initialization #',string(k)))
+            end
+            %Save Figure
+            savefig(f,strcat(cluster_save_path,'/init_',string(k),'_',string(s_type),'_cluster_sequence.fig'))
+            saveas(f,strcat(cluster_save_path,'/init_',string(k),'_',string(s_type),'_cluster_sequence.jpg'))
+            close(f)
+        end
+    end
 end
-linkaxes(axes)
-savefig(f3,strcat(net_save_path,'/movsum_cluster_sequence.fig'))
-%close(f2)
-clear k ax axes tick_vals
-%Regular Cluster Plots
-f3 = figure;
-axes = [];
-for k = 1:clusters
-    ax = subplot(subplot_y,subplot_x,k);
-    axes(end+1) = ax; %#ok<SAGROW>
-    imagesc(network_cluster_sequences(k).clusters)
-    title(strcat('Cluster sequence for #',string(k)))
-    xlabel('Spike Times')
-    ylabel('Cluster Number')
-end
-linkaxes(axes)
-savefig(f3,strcat(net_save_path,'/cluster_sequence.fig'))
-%close(f3)
-clear k ax axes tick_vals
 
 %% Calculate Cluster Firing Correlation
 %This code block calculates whether neurons firing at similar timepoints to
