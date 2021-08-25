@@ -21,5 +21,5 @@
  ### calculate_trajectory_similarity.m
  This function calculates a number of metrics of similarity between firing sequences. Specifically, it calculates Spearman's rank correlation rhos for sequences including and excluding nonfiring neurons from the ranks.
  
- ## calculate_cluster_overlap.m
+ ### calculate_cluster_overlap.m
  This function calculates the overlap of which clusters firing neurons belong to. For each event, using a sliding bin it calculates the fraction of overlap of all firing neurons for the full set of clusters they belong to.
