@@ -8,8 +8,8 @@ save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Save Folder'
 
 %Neuron and cluster counts
 n = 200; %number of neurons
-clusters = round(n/20); %number of clusters of neurons (for small n round(n/5), for large n round(n/20)) 
-cluster_n = round(n/5); %number of neurons in a cluster (for small n round(n/3), for large n round(n/5)) 
+clusters = 5; %round(n/20); %number of clusters of neurons (for small n round(n/5), for large n round(n/20)) 
+cluster_n = 80; %round(n/5); %number of neurons in a cluster (for small n round(n/3), for large n round(n/5)) 
 
 %Interaction constants
 t_max = 2; %maximum amount of time (s)
@@ -65,10 +65,13 @@ I_in = I_coeff*randn(n,t_steps+1)*I_scale; %Generally use -0.5-0.5 nA stimulus
 conn_prob = 0.08; %set a total desired connection probability
 npairs = n*(n-1); %total number of possible neuron connections
 nclusterpairs = cluster_n*(cluster_n - 1)*clusters; %total number of possible intra-cluster connections
-cluster_prob = min(conn_prob*npairs/nclusterpairs,1); %intra-cluster connection probability
+cluster_prob = min(conn_prob*npairs/nclusterpairs,1); %0.2041; %intra-cluster connection probability
 p_E = 0.75; %probability of an excitatory neuron
 p_I = 1 - p_E; %probability of an inhibitory neuron
 n_I = round(p_I*n); %number of inhibitory neurons
+
+%Event Statistics
+event_cutoff = 0.1; %percent of neurons that have to be involved to constitute a successful event
 
 %Save parameters to a structure and to computer
 w = whos;
@@ -98,7 +101,7 @@ for i = 1:10 %how many different network structures to test
     
     %SET UP NETWORK
     [cluster_mat, conns] = create_clusters(parameters.n, ...
-        parameters.clusters, parameters.cluster_n, parameters.cluster_prob);
+        parameters.clusters, parameters.cluster_n, parameters.cluster_prob, i);
     conns_copy = conns; %just a copy of the connections to maintain for reset runs if there's "plasticity"
     %Randomize excitatory and inhibitory connection strengths based on selected
     %probability.
@@ -174,7 +177,7 @@ for i = 1:10 %how many different network structures to test
                     last_time = s_i;
                     spike_count = spike_count + 1;
                 else
-                    if (last_start ~= last_time) && (spike_count > 0.05*parameters.n) %weed out events of single spikes
+                    if (last_start ~= last_time) && (spike_count > event_cutoff*parameters.n) %weed out events w/ too few spikes
                         events = [events; [last_start, last_time]]; %#ok<AGROW> %add the last range of spikes to the events vector
                     end
                     last_start = s_i;
@@ -186,7 +189,6 @@ for i = 1:10 %how many different network structures to test
                 events = [events; [last_start, last_time]]; %#ok<AGROW> %add the last interval
             end
             [num_events,~] = size(events);
-            display(events)
             %save to both structures
             network_spike_sequences(j).events = events;
             network_cluster_sequences(j).events = events;
@@ -234,14 +236,14 @@ for i = 1:10 %how many different network structures to test
                 title(strcat('Event #',string(e_i)))
                 set(gca, 'XTick',xt, 'XTickLabel',xtlbl)
             end
-            if strcmp(type,'cluster')
+            if strcmp(parameters.type,'cluster')
                 sgtitle(strcat('Spiking Behavior: cluster = ',string(j)),'FontSize',16)
             else
                 sgtitle('Spiking Behavior','FontSize',16)
             end
             %linkaxes(axes)
-            savefig(f,strcat(net_save_path,'/',type,'_',string(j),'firing_sequence.fig'))
-            saveas(f,strcat(net_save_path,'/',type,'_',string(j),'firing_sequence.jpg'))
+            savefig(f,strcat(net_save_path,'/',parameters.type,'_',string(j),'firing_sequence.fig'))
+            saveas(f,strcat(net_save_path,'/',parameters.type,'_',string(j),'firing_sequence.jpg'))
             close(f)
             clear e_i spike_order reordered_spikes event_length s_i ax ...
                 axes xt xtlbl
@@ -282,25 +284,119 @@ save_path = net_save_path(1:slashes(end));
 load(strcat(save_path,'/parameters.mat'))
 load(strcat(net_save_path,'/network_spike_sequences.mat'))
 
-[~,inits] = size(network_spike_sequences);
+n = parameters.n;
+inits = parameters.test_val_max;
 
-[neuron_ranks, rho_unique, ranks, rho_nonunique, ranks_mod] = calculate_trajectory_similarity(n, ...
-    inits, network_spike_sequences);
+%Find which simulated data indices have sequences
+viable_inits = [];
+for i = 1:inits
+    try
+        isempty(network_spike_sequences(i).events);
+        if ~isempty(network_spike_sequences(i).events)
+            viable_inits(end+1) = i;
+        end
+    end
+end
 
-ranks(isnan(ranks)) = 0;
+%Create a shuffled dataset based on the viable sequences
+shuffle_n = 100;
+%   First generate shuffled data
+[shuffled_spike_sequences] = generate_shuffled_trajectories(n,...
+    shuffle_n, network_spike_sequences, viable_inits);
+shuffled_viable_inits = [1:shuffle_n];
+
+%=====SPEARMAN'S RANK CORRELATIONS=====
+
+%_____Real Data Ranks_____
+%ranks = Spearman's rank correlation including nonspiking
+%ranks_mod = Spearman's rank correlation excluding nonspiking
+[ranks, ranks_mod] = calculate_trajectory_similarity_spearmans(n, ...
+    viable_inits, network_spike_sequences);
+%   Remove NaN Values
 ranks_mod(isnan(ranks_mod)) = 0;
+%   Turn Rank Matrices Into Vectors of Unique Ranks
+ranks_vec = nonzeros(triu(ranks,1)); %all above diagonal
+ranks_mod_vec = nonzeros(triu(ranks_mod,1)); %all above diagonal
 
-average_rank = mean(ranks(ranks~=1),'all');
-std_rank = std(ranks(ranks~=1),[],'all');
-average_rank_mod = mean(ranks_mod(ranks_mod~=1),'all');
-std_rank_mod = std(ranks_mod(ranks_mod~=1),[],'all');
+%_____Shuffled Data Ranks_____
+%   Get shuffled ranks
+[shuffled_ranks, shuffled_ranks_mod] = calculate_trajectory_similarity_spearmans(n, ...
+    shuffled_viable_inits, shuffled_spike_sequences);
+shuffled_ranks_vec = nonzeros(triu(shuffled_ranks,1)); %all above diagonal
+shuffled_ranks_mod_vec = nonzeros(triu(shuffled_ranks_mod,1)); %all above diagonal
+
+%_____Calculate Percentiles_____
+ranks_percentile = comp_percentile(shuffled_ranks_vec,mean(ranks_vec));
+ranks_mod_percentile = comp_percentile(shuffled_ranks_mod_vec,mean(ranks_mod_vec));
+
+%_____Plot Histograms with Percentiles_____
+f = figure;
+ax1 = subplot(1,2,1);
+histogram(shuffled_ranks_vec)
+hold on
+xline(mean(ranks_vec),'-',strcat('Percentile = ',string(ranks_percentile)))
+title('Spearmans Rank Correlation Rhos with Nonspiking Neurons at End')
+ax2 = subplot(1,2,2);
+histogram(shuffled_ranks_mod_vec)
+hold on
+xline(mean(ranks_mod_vec),'-',strcat('Percentile = ',string(ranks_mod_percentile)))
+title('Spearmans Rank Correlation Rhos Excluding Nonspiking Neurons')
+savefig(f,strcat(net_save_path,'/','spearmans_rank_percentiles.fig'))
+saveas(f,strcat(net_save_path,'/','spearmans_rank_percentiles.jpg'))
+close(f)
+
+%=====MATCHING INDICES=====
+
+%_____Real Data MIs_____
+%ranks = Spearman's rank correlation including nonspiking
+%ranks_mod = Spearman's rank correlation excluding nonspiking
+[matching_index, matching_index_mod] = calculate_trajectory_similarity_mi(n, ...
+    viable_inits, network_spike_sequences);
+%   Remove NaN Values
+matching_index_mod(isnan(matching_index_mod)) = 0;
+%   Turn Rank Matrices Into Vectors of Unique Ranks
+matching_index_vec = nonzeros(triu(matching_index,1)); %all above diagonal
+matching_index_mod_vec = nonzeros(triu(matching_index_mod,1)); %all above diagonal
+
+%_____Shuffled Data MIs_____
+%   Get shuffled ranks
+[shuffled_matching_index, shuffled_matching_index_mod] = calculate_trajectory_similarity_spearmans(n, ...
+    shuffled_viable_inits, shuffled_spike_sequences);
+shuffled_matching_index_vec = nonzeros(triu(shuffled_matching_index,1)); %all above diagonal
+shuffled_matching_index_mod_vec = nonzeros(triu(shuffled_matching_index_mod,1)); %all above diagonal
+
+%_____Calculate Percentiles_____
+matching_index_percentile = comp_percentile(shuffled_matching_index_vec,mean(matching_index_vec));
+matching_index_mod_percentile = comp_percentile(shuffled_matching_index_mod_vec,mean(matching_index_mod_vec));
+
+%_____Plot Histograms with Percentiles_____
+f = figure;
+ax1 = subplot(1,2,1);
+histogram(shuffled_matching_index_vec)
+hold on
+xline(mean(matching_index_vec),'-',strcat('Percentile = ',string(matching_index_percentile)))
+title('Matching Indices with Nonspiking Neurons at End')
+ax2 = subplot(1,2,2);
+histogram(shuffled_matching_index_mod_vec)
+hold on
+xline(mean(matching_index_mod_vec),'-',strcat('Percentile = ',string(matching_index_mod_percentile)))
+title('Matching Indices Excluding Nonspiking Neurons')
+savefig(f,strcat(net_save_path,'/','MI_percentiles.fig'))
+saveas(f,strcat(net_save_path,'/','MI_percentiles.jpg'))
+close(f)
 
 %% Visualize network structure
 %Select data to visualize
 net_save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Network Save Folder'); %Have user input where they'd like the output stored
 load(strcat(net_save_path,'/network.mat'))
+slashes = find(net_save_path == '/');
+save_path = net_save_path(1:slashes(end));
+load(strcat(save_path,'/parameters.mat'))
 
 cluster_mat = network.cluster_mat;
+clusters = parameters.clusters;
+n = parameters.n;
+conns = network.conns;
 
 %First create indices for each neuron in each cluster - staggering
 %locations
@@ -385,4 +481,135 @@ for i = 1:clusters
 end 
 title('Intra-Cluster Connectivity','FontSize',16)
 set(gca,'xtick',[],'ytick',[])
+
+%% Creat Plots of Network Properties
+%Select data to visualize
+net_save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Network Save Folder'); %Have user input where they'd like the output stored
+load(strcat(net_save_path,'/network.mat'))
+slashes = find(net_save_path == '/');
+save_path = net_save_path(1:slashes(end));
+load(strcat(save_path,'/parameters.mat'))
+
+cluster_mat = network.cluster_mat;
+clusters = parameters.clusters;
+n = parameters.n;
+conns = network.conns;
+
+%Plot Cluster Participation as Imagesc
+f = figure;
+imagesc(cluster_mat)
+colorbar('Ticks',[0,1],'TickLabels',{'No','Yes'})
+colormap(summer)
+xlabel('Neuron Index')
+ylabel('Cluster Index')
+title('Cluster Participation')
+f.Position = [440,720,866,85];
+savefig(f,strcat(net_save_path,'/','cluster_participation_visual.fig'))
+saveas(f,strcat(net_save_path,'/','cluster_participation_visual.jpg'))
+%close(f)
+
+%Plot Histogram of number of clusters each neuron participates in
+num_clusters = sum(cluster_mat,1);
+mean_clusters = mean(num_clusters);
+f2 = figure;
+histogram(num_clusters,'FaceColor',[1.0000,1.0000,0.4000])
+xline(mean_clusters,'label',strcat('Mean = ',string(mean_clusters)),...
+    'Color',[0,0.5000,0.4000],'LineWidth',1)
+ylabel('Number of Neurons')
+xlabel('Number of Clusters')
+title('Most Neurons Participate in Multiple Clusters')
+savefig(f2,strcat(net_save_path,'/','cluster_participation_histogram.fig'))
+saveas(f2,strcat(net_save_path,'/','cluster_participation_histogram.jpg'))
+%close(f2)
+
+%Plot Histogram of number of neurons that participate in a cluster overlap
+pairs = nchoosek(1:clusters,2);
+overlap = zeros(1,length(pairs));
+for i = 1:length(pairs)
+    overlap(1,i) = sum(sum(cluster_mat(pairs(i,:),:),1) == 2); %neurons in both clusters
+end
+mean_overlap = mean(overlap);
+f3 = figure;
+histogram(overlap,'FaceColor',[1.0000,0.7812,0.4975])
+xline(mean_overlap,'label',strcat('Mean = ',string(mean_overlap)),...
+    'Color',[0,0.5000,0.4000],'LineWidth',1)
+ylabel('Number of Cluster Pairs')
+xlabel('Number of Neurons')
+title('Number of Neurons in Cluster Overlap')
+savefig(f3,strcat(net_save_path,'/','cluster_overlap_histogram.fig'))
+saveas(f3,strcat(net_save_path,'/','cluster_overlap_histogram.jpg'))
+%close(f3)
+
+clear f f2
+%% Creat plot of overlap in 2 clusters
+
+%Select data to visualize
+net_save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Network Save Folder'); %Have user input where they'd like the output stored
+load(strcat(net_save_path,'/network.mat'))
+slashes = find(net_save_path == '/');
+save_path = net_save_path(1:slashes(end));
+load(strcat(save_path,'/parameters.mat'))
+
+cluster_mat = network.cluster_mat;
+clusters = parameters.clusters;
+cluster_n = parameters.cluster_n;
+n = parameters.n;
+conns = network.conns;
+clust_ind = randperm(clusters,2);
+neur_ind = find(sum(cluster_mat(clust_ind,:),1) == 2); %neurons in both clusters
+colors = [[0,0.5000,0.7500];[1.0000,0.7812,0.4975];[0,0.5000,0.4000]];
+
+%Store indices and colors of scatter points
+plot_ind = zeros(n,2); %index of each neuron scatter plot
+scatter_col = zeros(n,3); %color of each neuron scatter plot
+
+%Assign neuron color and location based on its cluster participation
+for i = 1:n
+    if sum(neur_ind == i) %is in both clusters
+        x_center = 1.5;
+        y_center = 1;
+        scatter_col(i,:) = colors(3,:);
+        plot_ind(i,1) = x_center + 0.2*(rand() - 0.5);
+        plot_ind(i,2) = y_center + 0.75*(rand() - 0.5);
+    else
+        in_clust = find(cluster_mat(clust_ind,i));
+        if ~isempty(in_clust) %neuron is in one of the clusters
+            if in_clust == 2 %set centers of point clouds
+                x_center = 2;
+                y_center = 1;
+                scatter_col(i,:) = colors(2,:);
+            else
+                x_center = 1;
+                y_center = 1;
+                scatter_col(i,:) = colors(1,:);
+            end
+            plot_ind(i,1) = x_center + 0.5*(rand() - 0.5);
+            plot_ind(i,2) = y_center + 0.5*(rand() - 0.5);
+        end
+    end
+end
+
+%Plot Cluster Connectivities
+f = figure;
+hold on
+for i = 1:2
+    c_i = clust_ind(i);
+    line_color = colors(i,:);
+    for j = 1:n
+        if cluster_mat(c_i,j) == 1
+            for k = 1:n
+                if cluster_mat(c_i,k) == 1
+                    if logical(conns(j,k)) == 1
+                        line([plot_ind(j,1),plot_ind(k,1)],[plot_ind(j,2),...
+                            plot_ind(k,2)],'LineStyle',':','Color',line_color)
+                    end
+                end
+            end
+        end
+    end
+end
+scatter(plot_ind(:,1),plot_ind(:,2),50,scatter_col,'filled')
+set(gca,'xtick',[],'ytick',[])
+
+
 

@@ -4,22 +4,34 @@
  ## lif_network_postrotation.m
  This program contains code to initialize parameters, run network creation using create_clusters.m, run an LIF model using lif_sra_calculator_postrotation.m, and perform a number of post-run analyses.
  
- ## visualize_cluster_sequences.m
- This program contains code to visualize the sequence of clusters the spike sequences move through. The code generates not only single timestep visualizations but moving summed bin visualizations, and both can be seen in both regular weight and normalized form.
+ ## viualize_cluster_sequences.m
+ This program visualizes a sequences of clusters a spike sequences progresses through, based on outputs from lif_network_postrotation.m
  
- ## calculate_plot_cluster_overlap.m
- This program calculates whether neurons firing at similar timepoints to each other are primarily from the same cluster, or different clusters. To do so, we use a sliding bin across the firing data and determine the average fraction of neurons in the same cluster(s) in each bin. If the bin has only a single neuron spiking, or no spikes, it will be left out of the calculation. If the bin has neurons from multiple different clusters, the calculation will be the sum of fraction of spiking neurons firing for each cluster represented, divided by the total number of clusters represented - getting an averge overlap calculation.
- 
+ ## visualize_voltage_traces.m
+ This program visualizes how a spike in one neuron affects connected neurons by looking at membrane potential deflections.
+
  ## Functions:
  
- ### lif_sra_calculator_postrotation.m
- This function uses the leaky integrate-and-fire model of  neuronal firing to calculate the trajectory of membrane potentials, currents, etc... that take place in a particular network with a particular set of parameters and initialization.
+ ### calculate_trajectory_similarity_mi.m
+ This function calculates the Matching Index (MI) (from Vas et al.) of trajectory similarity between firing sequences. Specifically, it calculates the MI for neuron firing orders including nonspiking neurons at the end of the order, as well as excluding nonspiking neurons.
+ 
+ ### calculate_trajectory_similarity_spearmans.m
+ This function calculates the Spearman's Rank Correlation Index of trajectory similarity between firing sequences with unique ranks. Specifically, it calculates the index for neuron firing orders including nonspiking neurons at the end of the order, as well as excluding nonspiking neurons.
+ 
+ ### comp_percentile.m
+ This function computes a percentile of a value against a dataset at a 10^(-2) accuracy.
  
  ### create_clusters.m
  This function generates the network clusters and connections based on the number of neurons, number of clusters, number of neurons per cluster, and the probability of connections within a cluster.
  
- ### calculate_trajectory_similarity.m
- This function calculates a number of metrics of similarity between firing sequences. Specifically, it calculates Spearman's rank correlation rhos for sequences including and excluding nonfiring neurons from the ranks.
+ ### generate_shuffled_trajectories.m
+ This function generates shuffled firing sequences based on the statistics of real trajectories from network simulations.
  
- ### calculate_cluster_overlap.m
- This function calculates the overlap of which clusters firing neurons belong to. For each event, using a sliding bin it calculates the fraction of overlap of all firing neurons for the full set of clusters they belong to.
+ ### lif_sra_calculator_postrotation.m
+ This function uses the leaky integrate-and-fire model of  neuronal firing to calculate the trajectory of membrane potentials, currents, etc... that take place in a particular network with a particular set of parameters and initialization.
+ 
+ 
+ 
+ 
+ 
+ 

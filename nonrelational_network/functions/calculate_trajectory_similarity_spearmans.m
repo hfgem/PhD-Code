@@ -1,14 +1,14 @@
-function [neuron_ranks, rho_unique, ranks, rho_nonunique, ranks_mod] = calculate_trajectory_similarity(n, ...
-    inits, network_spike_sequences)
+function [ranks, ranks_mod] = calculate_trajectory_similarity_spearmans(n, ...
+    viable_inits, network_spike_sequences)
     %_________
-    %ABOUT: This function calculates a number of metrics of similarity
-    %between firing sequences. Specifically, it calculates Spearman's rank
-    %correlation rhos for sequences including and excluding nonfiring
-    %neurons from the ranks.
+    %ABOUT: This function calculates Spearman's Rank Correlation rhos 
+    %between firing sequences. Specifically, it calculates these  values
+    %for sequences including and excluding nonfiring neurons from the ranks.
     %
     %INPUTS:
     %   n = number of neurons in the simulation
-    %   inits = number of initializations in the simulation
+    %   viable_inits = vector of indices of viable initializations in the 
+    %           simulation data
     %   network_spike_sequences = a [1 x inits] size structure including 
     %           all of the initializations, their events, the spike order
     %           for each event, the spike ranks for each event, and the
@@ -23,6 +23,7 @@ function [neuron_ranks, rho_unique, ranks, rho_nonunique, ranks_mod] = calculate
     %           function
     %   ranks = a [inits x inits] size matrix of manually calculated 
     %           correlation ranks between pairs of initializations
+    %           [EXCLUDING]
     %   rho_nonunique = a [inits x inits] size matrix of Spearman's
     %           correlation rhos for spike ranks excluding nonspiking
     %           neurons using Matlab's function
@@ -30,18 +31,21 @@ function [neuron_ranks, rho_unique, ranks, rho_nonunique, ranks_mod] = calculate
     %           correlation ranks excluding nonspiking neurons. Neurons
     %           that are nonspiking in one sequence but not another are
     %           kept, and neurons that are nonspiking in both are excluded.
+    %           [EXCLUDING]
     %_________
     
     %First store each event's rank information into a new matrix
     all_ranks = [];
-    for i = 1:inits
-        if ~isempty(network_spike_sequences(i).spike_ranks)
+    for i = viable_inits
+        if ~isempty(network_spike_sequences(i).spike_ranks) %second check
             sequences = network_spike_sequences(i).spike_ranks(1);
             sequence_names = fieldnames(sequences);
             [num_seq,~] = size(sequence_names);
             for j = 1:num_seq
                 rank_vals = network_spike_sequences(i).spike_ranks.(sequence_names{j});
-                all_ranks = [all_ranks; rank_vals]; %#ok<AGROW>
+                if length(find(rank_vals == 0)) < 0.25*length(rank_vals) %at least 1/4 of the neurons participate in the sequence
+                    all_ranks = [all_ranks; rank_vals]; %#ok<AGROW>
+                end
             end  
         end
     end
@@ -52,25 +56,18 @@ function [neuron_ranks, rho_unique, ranks, rho_nonunique, ranks_mod] = calculate
     %======NEURON RANKS - INCLUDING NONSPIKING======
 
     %Find ranks including nonspiking at the end of the line
-    neuron_ranks = all_ranks;
+    neuron_ranks = zeros(size(all_ranks));
     for i = 1:num_seq
-        max_ind = max(all_ranks(:,i));
-        ind = max_ind + 1;
-        for j = 1:n
-            if neuron_ranks(j,i) == 0
-                neuron_ranks(j,i) = ind;
-                ind = ind + 1;
-            end
-        end
+        all_ind = nonzeros(all_ranks(:,i));
+        missing_ind = setdiff(1:n,all_ind);
+        neuron_ranks(:,i) = [all_ind; missing_ind'];
     end
     clear i j max_ind ind
-
-    %Using Spearman's rank correlation on the unique integer values we get
-    rho_unique = corr(neuron_ranks,'Type','Spearman');
 
     %If all n ranks are distinct integers, can use the formula: (wikipedia)
     %r_s = 1 - (6*sum(d_i^2))/(n*(n^2 - 1))
     %d_i = rg(X_i) - rg(Y_i)
+    %To calculate the Spearman's Rank Correlation
     ranks = zeros(num_seq,num_seq);
     for i = 1:num_seq
         X_i = neuron_ranks(:,i);
@@ -91,12 +88,6 @@ function [neuron_ranks, rho_unique, ranks, rho_nonunique, ranks_mod] = calculate
     clear i X_i Y_i d j ix_i iy_i k
     
     %======NEURON RANKS - NOT INCLUDING NONSPIKING======
-
-    %Rank calculation with all nonspiking neurons ranked as NaN
-    network_spike_ranks_nan = all_ranks;
-    network_spike_ranks_nan(network_spike_ranks_nan == 0) = NaN;
-    rho_nonunique = corr(network_spike_ranks_nan,'Type',...
-        'Spearman','Rows','pairwise');
 
     %Rank calculation modified to exclude neurons that are nonspiking in
     %both datasets, but still including nonspiking neurons that are in one
