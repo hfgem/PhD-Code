@@ -1,5 +1,5 @@
 function [cluster_mat, conns] = create_clusters(n, clusters, ...
-    cluster_n, cluster_prob)
+    cluster_n, cluster_prob, seed)
     %_________
     %ABOUT: This function generates the network clusters and connections
     %based on the number of neurons, number of clusters, number of neurons
@@ -10,6 +10,7 @@ function [cluster_mat, conns] = create_clusters(n, clusters, ...
     %   clusters = number of clusters of neurons
     %   cluster_n = number of neurons in a cluster
     %   cluster_prob = intra-cluster connection probability
+    %   seed = random number generator seed
     %
     %OUTPUTS:
     %   cluster_mat = A binary [clusters x n] matrix of which neurons are in
@@ -19,6 +20,8 @@ function [cluster_mat, conns] = create_clusters(n, clusters, ...
     %                 connectivity
     %_________
 
+    rng(seed)
+    
     %Create clusters by randomly selecting cluster_n neurons for each
     cluster_mat = zeros(clusters,n);
     for i = 1:clusters %set clusters
@@ -35,10 +38,12 @@ function [cluster_mat, conns] = create_clusters(n, clusters, ...
     for i = ind_non
         clust_place = randi(clusters);
         ind_inclust = find(cluster_mat(clust_place,:));
-        val_steal = datasample(intersect(ind_inclust,ind_high),1);
-        cluster_mat(clust_place,i) = 1;
-        cluster_mat(clust_place,val_steal) = 0;
-        ind_high = find(sum(cluster_mat) > 2);
+        try %#ok<TRYNC>
+            val_steal = datasample(intersect(ind_inclust,ind_high),1);
+            cluster_mat(clust_place,i) = 1;
+            cluster_mat(clust_place,val_steal) = 0;
+            ind_high = find(sum(cluster_mat) > 2);
+        end
     end
     
     %Find the matrix of total connectivity - it will have integer values of
