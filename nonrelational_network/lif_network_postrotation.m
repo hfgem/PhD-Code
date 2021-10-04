@@ -13,7 +13,6 @@ save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Save Folder'
 %Neuron and cluster counts
 n = 200; %number of neurons
 clusters = round(n/20); %number of clusters of neurons (for small n round(n/5), for large n round(n/20)) 
-cluster_n = round(n/5); %number of neurons in a cluster (for small n round(n/3), for large n round(n/5)) 
 
 %Interaction constants
 t_max = 2; %maximum amount of time (s)
@@ -77,6 +76,9 @@ load(strcat(save_path,'/parameters.mat'))
 %____________________________________
 %___Calculate Dependent Parameters___
 %____________________________________
+cluster_n = min(parameters.n*2/parameters.clusters,parameters.n); %number of neurons in a cluster (for small n round(n/3), for large n round(n/5)) 
+parameters.('cluster_n') = cluster_n;
+
 %Interaction constants
 t_steps = parameters.t_max/parameters.dt; %number of timesteps in simulation
 E_syn_E = parameters.V_syn_E*ones(parameters.n,1); %vector of the synaptic reversal potential for excitatory connections
@@ -137,14 +139,13 @@ for i = 1:10 %how many different network structures to test
     
     %SET UP NETWORK
     [cluster_mat, conns] = create_clusters(parameters.n, ...
-        parameters.clusters, parameters.cluster_n, parameters.cluster_prob, i);
+        parameters.clusters, parameters.cluster_n, parameters.cluster_prob, i, 1);
     conns_copy = conns; %just a copy of the connections to maintain for reset runs if there's "plasticity"
     %Randomize excitatory and inhibitory connection strengths based on selected
     %probability.
     all_indices = [1:parameters.n];
-    I_indices = randi(parameters.n,[parameters.n_I,1]); %indices of inhibitory neurons
-    all_indices(I_indices) = 0;
-    E_indices = find(all_indices)'; %indices of excitatory neurons
+    I_indices = datasample(all_indices,parameters.n_I,'Replace',false); %indices of inhibitory neurons
+    E_indices = find(~ismember(all_indices,I_indices)); %indices of excitatory neurons
     n_EE = sum(conns(E_indices,E_indices),'all'); %number of E-E connections
     n_EI = sum(conns(E_indices,I_indices),'all'); %number of E-I connections
     n_II = sum(conns(I_indices,I_indices),'all'); %number of I-I connections
@@ -181,8 +182,7 @@ for i = 1:10 %how many different network structures to test
         
         %Run model
         [V_m, G_sra, G_syn_I, G_syn_E, I_syn] = lif_sra_calculator_postrotation(...
-            parameters, seed, cluster_mat, conns, I_indices, E_indices, ...
-            I_syn, G_syn_I, G_syn_E, V_m, G_sra);
+            parameters, seed, network, I_syn, G_syn_I, G_syn_E, V_m, G_sra);
         network_var(j).V_m = V_m;
         network_var(j).G_sra = G_sra;
         network_var(j).G_syn_I = G_syn_I;

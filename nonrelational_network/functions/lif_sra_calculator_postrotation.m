@@ -1,6 +1,5 @@
 function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postrotation(...
-    parameters, seed, cluster_mat, conns, I_indices, E_indices, I_syn, ...
-    G_syn_I, G_syn_E, V_m, G_sra)
+    parameters, seed, network, I_syn, G_syn_I, G_syn_E, V_m, G_sra)
     %_________
     %ABOUT: This function uses the leaky integrate-and-fire model of 
     %neuronal firing to calculate the trajectory of membrane potentials,
@@ -53,13 +52,14 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
     %       3. when type = 'current' sets the random number generator seed 
     %           which affects only the random noise added to the membrane 
     %           potential 
-    %   cluster_mat = A binary [clusters x n] matrix of which neurons are
+    %   network = a structure that contains the following:
+    %       cluster_mat = A binary [clusters x n] matrix of which neurons are
     %               in which cluster
-    %   conns = An [n x n] matrix of which neurons are connected to each
+    %       conns = An [n x n] matrix of which neurons are connected to each
     %               other, with values greater than 1 implying stronger
     %               connectivity
-    %   I_indices = Vector of indices of inhibitory neurons
-    %   E_indices = Vector of indices of excitatory neurons
+    %       I_indices = Vector of indices of inhibitory neurons
+    %       E_indices = Vector of indices of excitatory neurons
     %   I_syn = An [n x t_steps+1] matrix of synaptic current emitted by 
     %               each neuron at each timestep (A)
     %   G_syn_I = An [n x t_steps+1] matrix of conductance for presynaptic 
@@ -100,12 +100,13 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
     %Pick which cluster is initially spiking
     if strcmp(parameters.type,'cluster') %cluster set to threshold at timestep 1
         rng(1)
-        neur_start = find(cluster_mat(seed,:)); %one cluster starts firing
+        neur_start = find(network.cluster_mat(seed,:)); %one cluster starts firing
         %Set the membrane potential of spiking neurons to threshold
         V_m(neur_start,1) = parameters.V_th; %#ok<FNDSB>
     elseif strcmp(parameters.type,'neuron')
         rng(seed)
         neur_start = rand(parameters.n,1) <= 0.05;
+        %neur_start = randi(parameters.n); %just for single spike tests
         %Set the membrane potential of spiking neurons to threshold
         V_m(neur_start,1) = parameters.V_th; 
     elseif strcmp(parameters.type,'current')
@@ -113,12 +114,14 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
     end
     I_theta = parameters.I_in;
     
+    conns = network.conns; %separately update a connectivity matrix
+    
     %Run through each timestep and calculate
     for t = 1:parameters.t_steps
         %check for spiking neurons and postsynaptic and separate into E and I
         spikers = find(V_m(:,t) >= parameters.V_th);
-        spikers_I = spikers(ismember(spikers,I_indices)); %indices of inhibitory presynaptic neurons
-        spikers_E = spikers(ismember(spikers,E_indices)); %indices of excitatory presynaptic neurons
+        spikers_I = spikers(ismember(spikers,network.I_indices)); %indices of inhibitory presynaptic neurons
+        spikers_E = spikers(ismember(spikers,network.E_indices)); %indices of excitatory presynaptic neurons
         %______________________________________
         %Adjust parameters dependent on spiking
         G_sra(spikers,t) = G_sra(spikers,t) + parameters.del_G_sra; %set SRA conductance values
@@ -136,7 +139,7 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
         V_ss = (I_app + parameters.G_L*parameters.E_L + G_sra(:,t)*parameters.E_K)./(parameters.G_L + G_sra(:,t)); %"steady state" calculation
         taueff = parameters.C_m ./(parameters.G_L + G_sra(:,t)); %timescale for change in the membrane potential
         exp_coeff = (parameters.G_L*(parameters.E_L - V_m(:,t)) + G_sra(:,t).*(parameters.E_K - V_m(:,t)) + I_app)./(parameters.G_L + G_sra(:,t));
-        V_m(:,t+1) = V_ss - exp_coeff.*exp(-parameters.dt ./taueff) + randn([parameters.n,1])*(10^(-4)); %the randn portion can be removed if you'd prefer no noise
+        V_m(:,t+1) = V_ss - exp_coeff.*exp(-parameters.dt ./taueff) + randn([parameters.n,1])*(10^(-4)); %MAKE NOISE MAGNITUDE A PARAM %the randn portion can be removed if you'd prefer no noise
         V_m(spikers,t+1) = parameters.V_reset; %update those that just spiked to reset
         %______________________________________
         %Update next step conductances

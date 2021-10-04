@@ -20,7 +20,7 @@ num_tests = 10;
 
 %____USER INPUT VALUE____
 %Select which independent parameter(s) to modify
-modify_name = {'conn_prob'};
+modify_name = {'clusters'};
 [~,num_mod] = size(modify_name);
 
 %Find which parameter indices are being modified
@@ -63,6 +63,8 @@ for mod_i = 1:num_mod %for each modified variable
         %____________________________________
         %___Calculate Dependent Parameters___
         %____________________________________
+        cluster_n = min(round(parameters_copy.n*2/parameters_copy.clusters),parameters_copy.n); %number of neurons in a cluster (for small n round(n/3), for large n round(n/5)) 
+        parameters_copy.('cluster_n') = cluster_n;
         
         %Interaction constants
         t_steps = parameters_copy.t_max/parameters_copy.dt; %number of timesteps in simulation
@@ -119,14 +121,13 @@ for mod_i = 1:num_mod %for each modified variable
         
         %SET UP NETWORK
         [cluster_mat, conns] = create_clusters(parameters_copy.n, ...
-            parameters_copy.clusters, parameters_copy.cluster_n, parameters_copy.cluster_prob, best_net);
+            parameters_copy.clusters, parameters_copy.cluster_n, parameters_copy.cluster_prob, best_net, 1);
         conns_copy = conns; %just a copy of the connections to maintain for reset runs if there's "plasticity"
         %Randomize excitatory and inhibitory connection strengths based on selected
         %probability.
         all_indices = [1:parameters_copy.n];
-        I_indices = randi(parameters_copy.n,[parameters_copy.n_I,1]); %indices of inhibitory neurons
-        all_indices(I_indices) = 0;
-        E_indices = find(all_indices)'; %indices of excitatory neurons
+        I_indices = datasample(all_indices,parameters_copy.n_I,'Replace',false); %indices of inhibitory neurons
+        E_indices = find(~ismember(all_indices,I_indices)); %indices of excitatory neurons
         n_EE = sum(conns(E_indices,E_indices),'all'); %number of E-E connections
         n_EI = sum(conns(E_indices,I_indices),'all'); %number of E-I connections
         n_II = sum(conns(I_indices,I_indices),'all'); %number of I-I connections
@@ -166,8 +167,7 @@ for mod_i = 1:num_mod %for each modified variable
 
             %Run model
             [V_m, G_sra, G_syn_I, G_syn_E, I_syn] = lif_sra_calculator_postrotation(...
-                parameters_copy, seed, cluster_mat, conns, I_indices, E_indices, ...
-                I_syn, G_syn_I, G_syn_E, V_m, G_sra);
+            parameters_copy, seed, network, I_syn, G_syn_I, G_syn_E, V_m, G_sra);
             network_var(j).V_m = V_m;
             %network_var(j).G_sra = G_sra;
             %network_var(j).G_syn_I = G_syn_I;

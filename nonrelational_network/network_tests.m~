@@ -20,7 +20,7 @@ num_tests = 10;
 
 %____USER INPUT VALUE____
 %Select which independent parameter(s) to modify
-modify_name = {'conn_prob','I_coeff'};
+modify_name = {'clusters'};
 [~,num_mod] = size(modify_name);
 
 %Find which parameter indices are being modified
@@ -41,7 +41,7 @@ for i = 1:length(mod_ind)
     param_name = param_names{mod_ind(i)};
     param_val = parameters.(param_name);
     scale = floor(log10(param_val)); %scale of value - to ensure tests are in proper scale
-    new_params = param_val + linspace(param_val - (num_tests/2)*10^scale,param_val + (num_tests/2)*10^scale,10);
+    new_params = linspace(param_val - (num_tests/2)*10^scale,param_val + (num_tests/2)*10^scale,10);
     new_mod_vals(i,:) = new_params; 
 end
 
@@ -55,7 +55,7 @@ best_net = 2; %based on prior data, select which rng initialization for a networ
 
 for mod_i = 1:num_mod %for each modified variable
     mod_name = modify_name{mod_i};
-    for test_i = 1:num_tests %for all test values
+    for test_i = 3:num_tests %for all test values
         
         parameters_copy = parameters;
         parameters_copy.(mod_name) = new_mod_vals(mod_i,test_i);
@@ -63,6 +63,8 @@ for mod_i = 1:num_mod %for each modified variable
         %____________________________________
         %___Calculate Dependent Parameters___
         %____________________________________
+        cluster_n = min(round(parameters_copy.n*2/parameters_copy.clusters),parameters_copy.n); %number of neurons in a cluster (for small n round(n/3), for large n round(n/5)) 
+        parameters_copy.('cluster_n') = cluster_n;
         
         %Interaction constants
         t_steps = parameters_copy.t_max/parameters_copy.dt; %number of timesteps in simulation
@@ -124,9 +126,8 @@ for mod_i = 1:num_mod %for each modified variable
         %Randomize excitatory and inhibitory connection strengths based on selected
         %probability.
         all_indices = [1:parameters_copy.n];
-        I_indices = randi(parameters_copy.n,[parameters_copy.n_I,1]); %indices of inhibitory neurons
-        all_indices(I_indices) = 0;
-        E_indices = find(all_indices)'; %indices of excitatory neurons
+        I_indices = datasample(all_indices,parameters_copy.n_I,'Replace',false); %indices of inhibitory neurons
+        E_indices = find(~ismember(all_indices,I_indices))'; %indices of excitatory neurons
         n_EE = sum(conns(E_indices,E_indices),'all'); %number of E-E connections
         n_EI = sum(conns(E_indices,I_indices),'all'); %number of E-I connections
         n_II = sum(conns(I_indices,I_indices),'all'); %number of I-I connections
@@ -189,7 +190,7 @@ for mod_i = 1:num_mod %for each modified variable
             
             %USE FR AS AN INDICATOR OF GOOD SEQUENCES
             %In hippocampus, Jadhav lab uses 3 Hz as a place-cell cutoff
-            if %and(max_fr <= 3, max_fr >= 1) && and(avg_fr <= 2, avg_fr >= 1/(parameters_copy.t_max+1))
+            if max_fr >= 1 %and(max_fr <= 3, max_fr >= 1) && and(avg_fr <= 2, avg_fr >= 1/(parameters_copy.t_max+1))
                 %Find event times
                 events = []; 
                 last_start = spikes_t(1);

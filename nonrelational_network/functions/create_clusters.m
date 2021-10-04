@@ -1,5 +1,5 @@
 function [cluster_mat, conns] = create_clusters(n, clusters, ...
-    cluster_n, cluster_prob, seed)
+    cluster_n, cluster_prob, seed, include_all)
     %_________
     %ABOUT: This function generates the network clusters and connections
     %based on the number of neurons, number of clusters, number of neurons
@@ -11,7 +11,8 @@ function [cluster_mat, conns] = create_clusters(n, clusters, ...
     %   cluster_n = number of neurons in a cluster
     %   cluster_prob = intra-cluster connection probability
     %   seed = random number generator seed
-    %
+    %   include_all = binary value of whether to include all neurons in
+    %       clusters (1) or not (0).
     %OUTPUTS:
     %   cluster_mat = A binary [clusters x n] matrix of which neurons are in
     %                 which cluster
@@ -30,19 +31,21 @@ function [cluster_mat, conns] = create_clusters(n, clusters, ...
     end
     clear ord i
 
-    %Add back in those neurons that are not placed in a cluster, by
-    %removing a place from another neuron with a high presence - this
-    %section can be removed if you'd like some neurons to be unconnected
-    ind_non = find(sum(cluster_mat) == 0);
-    ind_high = find(sum(cluster_mat) > 2);
-    for i = ind_non
-        clust_place = randi(clusters);
-        ind_inclust = find(cluster_mat(clust_place,:));
-        try %#ok<TRYNC>
-            val_steal = datasample(intersect(ind_inclust,ind_high),1);
-            cluster_mat(clust_place,i) = 1;
-            cluster_mat(clust_place,val_steal) = 0;
-            ind_high = find(sum(cluster_mat) > 2);
+    if include_all
+        %Add back in those neurons that are not placed in a cluster, by
+        %removing a place from another neuron with a high presence - this
+        %section can be removed if you'd like some neurons to be unconnected
+        ind_non = find(sum(cluster_mat) == 0);
+        ind_high = find(sum(cluster_mat) > 2);
+        for i = ind_non
+            clust_place = randi(clusters);
+            ind_inclust = find(cluster_mat(clust_place,:));
+            try %#ok<TRYNC>
+                val_steal = datasample(intersect(ind_inclust,ind_high),1);
+                cluster_mat(clust_place,i) = 1;
+                cluster_mat(clust_place,val_steal) = 0;
+                ind_high = find(sum(cluster_mat) > 2);
+            end
         end
     end
     
