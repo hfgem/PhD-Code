@@ -10,6 +10,7 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
     %   parameters = a structure that contains the following:
     %       n = Number of neurons in the network
     %       V_reset = The reset membrane potential (V)
+    %       V_m_noise = Magnitude of membrane potential simulation noise (V)
     %       V_th = The threshold membrane potential (V)
     %       
     %       del_G_sra = spike rate adaptation conductance step following spike 
@@ -116,6 +117,14 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
     
     conns = network.conns; %separately update a connectivity matrix
     
+    %TO DEPRECATE LATER: In the case that the parameters file being used 
+    %does not contain V_m_noise:
+    try
+        parameters.V_m_noise;
+    catch
+        parameters.('V_m_noise') = 10^(-4);
+    end
+    
     %Run through each timestep and calculate
     for t = 1:parameters.t_steps
         %check for spiking neurons and postsynaptic and separate into E and I
@@ -139,7 +148,7 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
         V_ss = (I_app + parameters.G_L*parameters.E_L + G_sra(:,t)*parameters.E_K)./(parameters.G_L + G_sra(:,t)); %"steady state" calculation
         taueff = parameters.C_m ./(parameters.G_L + G_sra(:,t)); %timescale for change in the membrane potential
         exp_coeff = (parameters.G_L*(parameters.E_L - V_m(:,t)) + G_sra(:,t).*(parameters.E_K - V_m(:,t)) + I_app)./(parameters.G_L + G_sra(:,t));
-        V_m(:,t+1) = V_ss - exp_coeff.*exp(-parameters.dt ./taueff) + randn([parameters.n,1])*(10^(-4)); %MAKE NOISE MAGNITUDE A PARAM %the randn portion can be removed if you'd prefer no noise
+        V_m(:,t+1) = V_ss - exp_coeff.*exp(-parameters.dt ./taueff) + randn([parameters.n,1])*parameters.V_m_noise; %MAKE NOISE MAGNITUDE A PARAM %the randn portion can be removed if you'd prefer no noise
         V_m(spikers,t+1) = parameters.V_reset; %update those that just spiked to reset
         %______________________________________
         %Update next step conductances

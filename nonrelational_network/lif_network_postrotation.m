@@ -24,6 +24,7 @@ E_K = -80*10^(-3); %potassium reversal potential (V) %-75 or -80 mV
 E_L = -70*10^(-3); %leak reversal potential (V) %-60 - -70 mV range
 G_L = 25*10^(-9); %leak conductance (S) %10 - 30 nS range
 C_m = 0.5*10^(-9); %total membrane capacitance (F) %Huge range from 0.1 - 100 pF
+V_m_noise = 10^(-4); %magnitude of noise to use in membrane potential simulation (V)
 V_th = -50*10^(-3); %threshold membrane potential (V)
 V_reset = -70*10^(-3); %reset membrane potential (V)
 V_syn_E = 0; %synaptic reversal potential (excitatory)
