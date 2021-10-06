@@ -31,6 +31,7 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
     %       tau_sra = Spike rate adaptation time constant (s)
     %       tau_syn_E = AMPA/NMDA synaptic decay time constant (s)
     %       tau_syn_I = GABA synaptic decay time constant (s)
+    %       tau_stdp = STDP decay time constant (s)
     %       connectivity_gain = Amount to increase or decrease connectivity by 
     %               with each spike (more at the range of 1.002-1.005) -
     %               keep at 1 to ensure no connectivity change
@@ -125,10 +126,22 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
         parameters.('V_m_noise') = 10^(-4);
     end
     
+    %TO DEPRECATE LATER: In the case that the parameters file being used 
+    %does not contain tau_stdp:
+    try
+        parameters.tau_stdp;
+    catch
+        parameters.('tau_stdp') = 5*10^(-3);
+    end
+    
+    t_spike = zeros(parameters.n,1); %vector to store the time of each neuron's last spike, for use in STDP
+    t_stdp = round(parameters.tau_stdp/parameters.dt);
+    
     %Run through each timestep and calculate
     for t = 1:parameters.t_steps
         %check for spiking neurons and postsynaptic and separate into E and I
         spikers = find(V_m(:,t) >= parameters.V_th);
+        t_spike(spikers) = t;
         spikers_I = spikers(ismember(spikers,network.I_indices)); %indices of inhibitory presynaptic neurons
         spikers_E = spikers(ismember(spikers,network.E_indices)); %indices of excitatory presynaptic neurons
         %______________________________________
@@ -137,8 +150,8 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
         %Synaptic conductance is stepped for postsynaptic neurons
         %   dependent on the number of presynaptic connections, and the
         %   current will depend on the presynaptic neuron type (E_syn_I and E_syn_E)
-        incoming_conn_E = sum(conns(spikers_E,:),1)';
-        incoming_conn_I = sum(conns(spikers_I,:),1)';
+        incoming_conn_E = sum(conns(spikers_E,:),1)'; %post-synaptic neuron E input counts
+        incoming_conn_I = sum(conns(spikers_I,:),1)'; %post-synaptic neuron I input counts
         G_syn_E(:,t) = G_syn_E(:,t) + parameters.del_G_syn_E*incoming_conn_E; %excitatory conductance
         G_syn_I(:,t) = G_syn_I(:,t) + parameters.del_G_syn_I*incoming_conn_I; %inhibitory conductance
         I_syn(:,t) = G_syn_E(:,t).*(parameters.E_syn_E - V_m(:,t)) + G_syn_I(:,t).*(parameters.E_syn_I - V_m(:,t));
@@ -158,8 +171,12 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
         G_syn_E(:,t+1) = G_syn_E(:,t).*exp(-parameters.dt/parameters.tau_syn_E); %excitatory conductance update
         G_syn_I(:,t+1) = G_syn_I(:,t).*exp(-parameters.dt/parameters.tau_syn_I); %inhibitory conductance update
         %______________________________________
-        %Update connection strengths
-        conns(spikers,:) = parameters.connectivity_gain*conns(spikers,:); %enhance connections of those neurons that just fired
-        conns(~spikers,:) = (1/parameters.connectivity_gain)*conns(~spikers,:); %decrease connections of those neurons that did not fire
+        %Update connection strengths via STDP
+        pre_syn_n = conns(:,spikers); %pre-synaptic neurons
+        pre_syn_t = t_spike.*pre_syn_n; %spike times of pre-synaptic neurons
+        t_diff = t - pre_syn_t; %time diff between pre-synaptic and current
+        sign_diff = sign(t_diff);
+        del_conn = sign_diff.*(parameters.connectivity_gain*exp(-t_diff/t_stdp));
+        conns(:,spikers) = conns(:,spikers) + del_conn; %enhance connections of those neurons that just fired
     end
 end

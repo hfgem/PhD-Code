@@ -20,6 +20,7 @@ dt = 0.1*10^(-3); %timestep (s)
 tau_syn_E = 10*10^(-3); %AMPA/NMDA synaptic decay time constant (s)
 tau_syn_I = 5*10^(-3); %GABA synaptic decay time constant (s)
 tau_sra = 30*10^(-3); %spike rate adaptation time constant (s)
+tau_stdp = 5*10^(-3); %STDP time constant (s)
 E_K = -80*10^(-3); %potassium reversal potential (V) %-75 or -80 mV
 E_L = -70*10^(-3); %leak reversal potential (V) %-60 - -70 mV range
 G_L = 25*10^(-9); %leak conductance (S) %10 - 30 nS range
@@ -34,7 +35,8 @@ del_G_syn_E = 8*10^(-9); %synaptic conductance step following spike (S)
 del_G_syn_I = 8*10^(-9); %synaptic conductance step following spike (S)
 %___________________________
 del_G_sra = 200*10^(-9); %spike rate adaptation conductance step following spike %ranges from 1-200 *10^(-9) (S)
-connectivity_gain = 1; %amount to increase or decrease connectivity by with each spike (more at the range of 1.002-1.005)
+%If want to have STDP, change connectivity_gain to > 0.
+connectivity_gain = 0.002; %amount to increase or decrease connectivity by with each spike (more at the range of 0.002-0.005)
 IEI = 0.05; %inter-event-interval (s) the elapsed time between spikes to count separate events
 %How spikes are initiated:
 %'cluster' sets a cluster to threshold;
@@ -256,11 +258,8 @@ for i = 1:10 %how many different network structures to test
             for e_i = 1:num_events
                 spike_order = network_spike_sequences(j).spike_order.(strcat('sequence_',string(e_i)));
                 sub_spikes_V_m = spikes_V_m(:,events(e_i,1):events(e_i,2));
-                reordered_spikes = zeros(size(sub_spikes_V_m));
-                [~,event_length] = size(reordered_spikes);
-                for s_i = 1:length(spike_order)
-                    reordered_spikes(s_i,:) = sub_spikes_V_m(spike_order(s_i),:);
-                end 
+                reordered_spikes = sub_spikes_V_m(spike_order,:);
+                [~,event_length] = size(reordered_spikes); 
                 ax = subplot(1,num_events,e_i);
                 axes = [axes, ax];
                 imagesc(reordered_spikes)
