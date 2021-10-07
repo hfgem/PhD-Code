@@ -158,10 +158,9 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
         I_app = I_syn(:,t) + I_theta(:,t);
         %______________________________________
         %Calculate membrane potential using integration method
-        V_ss = (I_app + parameters.G_L*parameters.E_L + G_sra(:,t)*parameters.E_K)./(parameters.G_L + G_sra(:,t)); %"steady state" calculation
-        taueff = parameters.C_m ./(parameters.G_L + G_sra(:,t)); %timescale for change in the membrane potential
-        exp_coeff = (parameters.G_L*(parameters.E_L - V_m(:,t)) + G_sra(:,t).*(parameters.E_K - V_m(:,t)) + I_app)./(parameters.G_L + G_sra(:,t));
-        V_m(:,t+1) = V_ss - exp_coeff.*exp(-parameters.dt ./taueff) + randn([parameters.n,1])*parameters.V_m_noise; %MAKE NOISE MAGNITUDE A PARAM %the randn portion can be removed if you'd prefer no noise
+        V_ss = (I_app + parameters.G_L*parameters.E_L + G_sra(:,t)*parameters.E_K)./(parameters.G_L + G_sra(:,t) + G_syn_E(:,t) + G_syn_I(:,t)); %"steady state" calculation
+        taueff = parameters.C_m ./(parameters.G_L + G_sra(:,t) + G_syn_E(:,t) + G_syn_I(:,t)); %timescale for change in the membrane potential
+        V_m(:,t+1) = V_ss + (V_m(:,t) - V_ss).*exp(-parameters.dt ./taueff) + randn([parameters.n,1])*parameters.V_m_noise; %MAKE NOISE MAGNITUDE A PARAM %the randn portion can be removed if you'd prefer no noise
         V_m(spikers,t+1) = parameters.V_reset; %update those that just spiked to reset
         %______________________________________
         %Update next step conductances

@@ -8,11 +8,15 @@
 %__________________
 
 %% Initialization
-%Load original parameter file
 
-%Select and load data to analyze
-load_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Network Load Folder'); %Have user input where they're pulling parameters from
-load(strcat(load_path,'/parameters.mat'))
+%Select folder of good network structure and parameters to use in tests
+load_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select network.m Load Folder'); %Have user input where they'd like network structure to be loaded from
+
+%Load data to analyze
+load(strcat(load_path,'/network.mat'))
+slashes = find(load_path == '/');
+param_path = load_path(1:slashes(end));
+load(strcat(param_path,'/parameters.mat'))
 param_names = fieldnames(parameters);
 
 %How many tests to run
@@ -20,7 +24,7 @@ num_tests = 10;
 
 %____USER INPUT VALUE____
 %Select which independent parameter(s) to modify
-modify_name = {'clusters'};
+modify_name = {'conn_prob'};
 [~,num_mod] = size(modify_name);
 
 %Find which parameter indices are being modified

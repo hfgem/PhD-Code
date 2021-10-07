@@ -115,7 +115,7 @@ save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Save Folder'
 STDP_sequences = struct;
 STDP_V_m = struct;
 
-for i = 1:num_repeat_tests
+for i = 1:num_repeat_tests+1
     rng(1) %to ensure the same initialization is selected each time
     init_seed = randi(parameters.test_val_max,[1, parameters.test_val_max]);
     
@@ -245,6 +245,9 @@ for i = 1:num_to_visualize
 end
 linkaxes(axes)
 sgtitle('Sequence as a Function of Learning')
+savefig(f,strcat(load_path,'/sequences_after_learning.fig'))
+saveas(f,strcat(load_path,'/sequences_after_learning.jpg'))
+    
 
 %_____________
 % Calculate the sequence correlations for different amounts of learning
@@ -296,6 +299,8 @@ yt = get(gca,'YTick');
 set(gca, 'XTick',xt, 'XTickLabel',num_repeats)
 set(gca, 'YTick',yt, 'YTickLabel',num_repeats)
 title('Visualization of Rank Correlation Pairs')
+savefig(f1,strcat(load_path,'/sequences_after_learning_correlation.fig'))
+saveas(f1,strcat(load_path,'/sequences_after_learning_correlation.jpg'))
 
 % Visualize histograms of correlation values for different learning amounts
 
