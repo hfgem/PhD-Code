@@ -36,7 +36,7 @@ del_G_syn_I = 8*10^(-9); %synaptic conductance step following spike (S)
 %___________________________
 del_G_sra = 200*10^(-9); %spike rate adaptation conductance step following spike %ranges from 1-200 *10^(-9) (S)
 %If want to have STDP, change connectivity_gain to > 0.
-connectivity_gain = 0.002; %amount to increase or decrease connectivity by with each spike (more at the range of 0.002-0.005)
+connectivity_gain = 0; %0.002; %amount to increase or decrease connectivity by with each spike (more at the range of 0.002-0.005)
 IEI = 0.05; %inter-event-interval (s) the elapsed time between spikes to count separate events
 %How spikes are initiated:
 %'cluster' sets a cluster to threshold;
@@ -53,7 +53,8 @@ I_scale = 1*10^(-9); %sets the scale of the current input
 
 %Calculate connection probabilites
 conn_prob = 0.08; %set a total desired connection probability
-
+conn_mu = 0.5;
+conn_sig = 0.25;
 p_E = 0.75; %probability of an excitatory neuron
 
 %Event Statistics
@@ -141,8 +142,7 @@ for i = 1:10 %how many different network structures to test
     end
     
     %SET UP NETWORK
-    [cluster_mat, conns] = create_clusters(parameters.n, ...
-        parameters.clusters, parameters.cluster_n, parameters.cluster_prob, i, 1);
+    [cluster_mat, conns] = create_clusters(parameters, i, 1);
     conns_copy = conns; %just a copy of the connections to maintain for reset runs if there's "plasticity"
     %Randomize excitatory and inhibitory connection strengths based on selected
     %probability.

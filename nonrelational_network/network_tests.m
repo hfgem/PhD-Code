@@ -9,22 +9,23 @@
 
 %% Initialization
 
-%Select folder of good network structure and parameters to use in tests
+%Select folder of good parameters to use in tests
 load_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select network.m Load Folder'); %Have user input where they'd like network structure to be loaded from
 
 %Load data to analyze
-load(strcat(load_path,'/network.mat'))
-slashes = find(load_path == '/');
-param_path = load_path(1:slashes(end));
-load(strcat(param_path,'/parameters.mat'))
+load(strcat(load_path,'/parameters.mat'))
 param_names = fieldnames(parameters);
+
+parameters.del_G_syn_I = 15*10^(-9);
+parameters.tau_syn_E = 8*10^(-3);
+parameters.tau_sra = 35*10^(-3);
 
 %How many tests to run
 num_tests = 10;
 
 %____USER INPUT VALUE____
 %Select which independent parameter(s) to modify
-modify_name = {'conn_prob'};
+modify_name = {'del_G_syn_E'};
 [~,num_mod] = size(modify_name);
 
 %Find which parameter indices are being modified
@@ -45,8 +46,9 @@ for i = 1:length(mod_ind)
     param_name = param_names{mod_ind(i)};
     param_val = parameters.(param_name);
     scale = floor(log10(param_val)); %scale of value - to ensure tests are in proper scale
-    new_params = linspace(param_val - (num_tests/2)*10^scale,param_val + (num_tests/2)*10^scale,10);
-    new_mod_vals(i,:) = new_params; 
+    %new_params = linspace(max(param_val - (num_tests/2)*10^scale,0),param_val + (num_tests/2)*10^scale,num_tests);
+    new_params = linspace(0,10*10^(-9),num_tests);
+    new_mod_vals(i,:) = new_params;
 end
 
 clear i param_name param_val scale new_params false_vals
@@ -63,6 +65,8 @@ for mod_i = 1:num_mod %for each modified variable
         
         parameters_copy = parameters;
         parameters_copy.(mod_name) = new_mod_vals(mod_i,test_i);
+        
+        display(strcat('Current Value =',string(new_mod_vals(mod_i,test_i))))
         
         %____________________________________
         %___Calculate Dependent Parameters___
@@ -118,14 +122,13 @@ for mod_i = 1:num_mod %for each modified variable
         rng(best_net) %set random number generator for network structure
         
         %CREATE NETWORK SAVE PATH
-        net_save_path = strcat(save_path,'/network_',string(best_net),'_mod_',mod_name,'_val_',string(new_mod_vals(mod_i,test_i)));
+        net_save_path = strcat(save_path,'/',mod_name,'/network_',string(best_net),'_mod_',mod_name,'_val_',string(new_mod_vals(mod_i,test_i)));
         if ~isfolder(net_save_path)
             mkdir(net_save_path);
         end
         
         %SET UP NETWORK
-        [cluster_mat, conns] = create_clusters(parameters_copy.n, ...
-            parameters_copy.clusters, parameters_copy.cluster_n, parameters_copy.cluster_prob, best_net, 1);
+        [cluster_mat, conns] = create_clusters(parameters, best_net, 1);
         conns_copy = conns; %just a copy of the connections to maintain for reset runs if there's "plasticity"
         %Randomize excitatory and inhibitory connection strengths based on selected
         %probability.
@@ -145,7 +148,6 @@ for mod_i = 1:num_mod %for each modified variable
         network(1).I_indices = I_indices;
         network(1).E_indices = E_indices;
         save(strcat(net_save_path,'/network.mat'),'network')
-        clear network %to save space
         
         %RUN MODEL AND CALCULATE
         %Run through every cluster initialization and store relevant data and
@@ -255,7 +257,7 @@ for mod_i = 1:num_mod %for each modified variable
                     ax = subplot(1,num_events,e_i);
                     axes = [axes, ax];
                     imagesc(reordered_spikes)
-                    xticks(round(linspace(1,event_length,20))) %20 ticks will be displayed
+                    xticks(round(linspace(1,event_length,20),2)) %20 ticks will be displayed
                     xt = get(gca,'XTick');
                     xtlbl = round(linspace(events(e_i,1)*parameters_copy.dt,events(e_i,2)*parameters_copy.dt,numel(xt)),2);
                     colormap(flip(gray))
