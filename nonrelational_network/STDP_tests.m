@@ -11,31 +11,15 @@
 %% Initialization
 
 %Select folder of good network structure and parameters to use in tests
-load_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select network.m Load Folder'); %Have user input where they'd like network structure to be loaded from
-
-%_________________________________
-%___Load Independent Parameters___
-%_________________________________
-load(strcat(load_path,'/network.mat'))
-slashes = find(load_path == '/');
-param_path = load_path(1:slashes(end));
-load(strcat(param_path,'/parameters.mat'))
-
-%TO DEPRECATE LATER: In the case that the parameters file being used 
-%does not contain V_m_noise:
-try
-    parameters.V_m_noise;
-catch
-    parameters.('V_m_noise') = 10^(-4);
-end
-
-%TO DEPRECATE LATER: In the case that the parameters file being used 
-%does not contain tau_stdp:
-try
-    parameters.tau_stdp;
-catch
-    parameters.('tau_stdp') = 5*10^(-3);
-end
+% load_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select network.m Load Folder'); %Have user input where they'd like network structure to be loaded from
+% 
+% %_________________________________
+% %___Load Independent Parameters___
+% %_________________________________
+% load(strcat(load_path,'/network.mat'))
+% slashes = find(load_path == '/');
+% param_path = load_path(1:slashes(end));
+% load(strcat(param_path,'/parameters.mat'))
 
 %____________________________________
 %___Calculate Dependent Parameters___
@@ -97,9 +81,9 @@ parameters.tau_stdp = 1*10^(-3); %STDP time constant (s)
 parameters.connectivity_gain = 0.002; %amount to increase or decrease connectivity by with each STDP rule (more at the range of 0.002-0.005)
 %Here you set the simulation rules
 num_repeat_tests = 10; %how many repeat values to test
-max_repeats = 100; %maximum number of repeats to test
-num_repeats = 0:num_repeat_tests:max_repeats; %vector of repeats to test
-num_repeats(1) = 1; %update first value to be 1 repeat rather than 0
+max_repeats = 10; %maximum number of repeats to test
+num_repeats = 0:max_repeats/num_repeat_tests:max_repeats+1;  %vector of repeats to test
+num_repeats(1) = []; %update first value to be 1 repeat rather than 0
 
 %% Test STDP's Effect on Other Sequences
 
@@ -115,31 +99,14 @@ save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Save Folder'
 STDP_sequences = struct;
 STDP_V_m = struct;
 
-for i = 1:num_repeat_tests+1
-    rng(1) %to ensure the same initialization is selected each time
-    init_seed = randi(parameters.test_val_max,[1, parameters.test_val_max]);
+for i = 1:num_repeat_tests
+%     rng(2) %to ensure the same initialization is selected each time
+%     init_seed = datasample(1:parameters.test_val_max,parameters.test_val_max,'Replace',false);
     
-     %SET UP NETWORK
-    [cluster_mat, conns] = create_clusters(parameters, i, 1);
-    conns_copy = conns; %just a copy of the connections to maintain for reset runs if there's "plasticity"
-    %Randomize excitatory and inhibitory connection strengths based on selected
-    %probability.
-    all_indices = [1:parameters.n];
-    I_indices = datasample(all_indices,parameters.n_I,'Replace',false); %indices of inhibitory neurons
-    E_indices = find(~ismember(all_indices,I_indices)); %indices of excitatory neurons
-    n_EE = sum(conns(E_indices,E_indices),'all'); %number of E-E connections
-    n_EI = sum(conns(E_indices,I_indices),'all'); %number of E-I connections
-    n_II = sum(conns(I_indices,I_indices),'all'); %number of I-I connections
-    n_IE = sum(conns(I_indices,E_indices),'all'); %number of I-E connections
-    clear all_indices
-    
-    %SAVE NETWORK STRUCTURE
-    network = struct;
-    network(1).cluster_mat = cluster_mat;
-    network(1).conns = conns;
-    network(1).I_indices = I_indices;
-    network(1).E_indices = E_indices;
-    save(strcat(net_save_path,'/network.mat'),'network')
+    init_seed = [2,4,1,8,9,6,10,3,5,7];
+
+    %Create a network copy to modify
+    network_copy = network;
     
     %Set up storage
     STDP_sequences(i).num_repeats = num_repeats(i);
@@ -220,12 +187,12 @@ disp('STDP Tests Done')
 %% Analyze the Results of STDP on One Sequence
 %Load data
 %Select folder of STDP datasets
-load_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Save Folder');
-load(strcat(load_path,'/STDP_sequences.mat'))
-load(strcat(load_path,'/STDP_V_m.mat'))
-slashes = find(load_path == '/');
-param_path = load_path(1:slashes(end));
-load(strcat(param_path,'/parameters.mat'))
+% load_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Save Folder');
+% load(strcat(load_path,'/STDP_sequences.mat'))
+% load(strcat(load_path,'/STDP_V_m.mat'))
+% slashes = find(load_path == '/');
+% param_path = load_path(1:slashes(end));
+% load(strcat(param_path,'/parameters.mat'))
 
 %_____________
 % Visualize how the sequence changes over the course of STDP learning
@@ -250,14 +217,23 @@ axes = [];
 for i = 1:num_to_visualize
     ax = subplot(subplot_x,subplot_y,i);
     V_m_spikes = STDP_V_m(i).('V_m_1') >= parameters.V_th;
-    STDP_order = same_sequences(:,i); %Comment out if ordering by line 228
+    STDP_order = same_sequences(:,i); %Comment out if ordering by line 217
     V_m_spikes_reordered = V_m_spikes(STDP_order,:);
     spike_times = find(sum(V_m_spikes_reordered,1));
     large_spike_intervals = find((spike_times(2:end) - spike_times(1:end-1))>500);
-    last_spike_time = spike_times(large_spike_intervals(1))+100;
+    if isempty(large_spike_intervals)
+        last_spike_time = spike_times(end);
+    else
+        last_spike_time = spike_times(large_spike_intervals(1))+100;
+    end
+    last_spike_time_s = last_spike_time * parameters.dt * 10^3; %convert to ms
     imagesc(V_m_spikes_reordered(:,1:last_spike_time))
     colormap(flip(gray))
-    xlabel('Time (s)')%,'FontSize',16)
+    xticks(round(linspace(1,last_spike_time,5))) %20 ticks will be displayed
+    xt = get(gca,'XTick');
+    xtlbl = round(linspace(0,last_spike_time_s,numel(xt)),2);
+    set(gca, 'XTick',xt, 'XTickLabel',xtlbl)
+    xlabel('Time (ms)')%,'FontSize',16)
     ylabel('Reordered Neuron Number')%,'FontSize',16)
     title(strcat('Repeats = ',string(num_repeats(i))))
     axes = [axes, ax]; %#ok<AGROW>
@@ -284,19 +260,21 @@ for i = 1:num_to_visualize
         X_i = setdiff(X_i, nonspiking', 'stable');
         Y_i = setdiff(Y_i, nonspiking', 'stable');
         new_n = (length(X_i)+length(Y_i))/2;
-        d = zeros(1,parameters.n);
-        for k = 1:parameters.n
-            %find the ranks of each neuron
-            ix_i = find(X_i == k);
-            iy_i = find(Y_i == k);
-            if ~isempty(ix_i) && ~isempty(iy_i) %if both are spiking
-                d(1,k) = ix_i - iy_i;
+        if new_n ~= 0
+            d = zeros(1,parameters.n);
+            for k = 1:parameters.n
+                %find the ranks of each neuron
+                ix_i = find(X_i == k);
+                iy_i = find(Y_i == k);
+                if ~isempty(ix_i) && ~isempty(iy_i) %if both are spiking
+                    d(1,k) = ix_i - iy_i;
+                end
             end
-        end
-        ranks(i,j) = 1 - (6*sum(d.^2))/(new_n*(new_n^2 - 1));
-        ranks(j,i) = ranks(i,j);
-        if i == j
-            ranks(i,j) = 1;
+            ranks(i,j) = 1 - (6*sum(d.^2))/(new_n*(new_n^2 - 1));
+            ranks(j,i) = ranks(i,j);
+            if i == j
+                ranks(i,j) = 1;
+            end
         end
     end
 end    
@@ -321,10 +299,205 @@ title('Visualization of Rank Correlation Pairs')
 savefig(f1,strcat(load_path,'/sequences_after_learning_correlation.fig'))
 saveas(f1,strcat(load_path,'/sequences_after_learning_correlation.jpg'))
 
+
 % Visualize histograms of correlation values for different learning amounts
 
+%_____________
+% Calculate the sequence correlations for different amounts of learning
+% ranks_win looks at rank correlations of different sequences compared to
+%   each other when one of them has been strengthened through STDP
+% ranks_across looks at rank correlations of the same sequence across
+%   different learning of a different sequence
+%_____________
 
-% Visualize a line plot with std of the average correlation values for
-% different learning amounts
+%First store sequences across inits
+[n,num_inits] = size(STDP_sequences(1).spike_order);
+sequences_across = zeros(num_inits,n,num_to_visualize);
+sequences_across_nonspiking = zeros(num_inits,n,num_to_visualize);
+sequences_across_length = zeros(num_inits,num_to_visualize);
+for i = 1:num_inits
+    for j = 1:num_to_visualize
+        sequences_across(i,:,j) = STDP_sequences(j).spike_order(:,i);
+        sequences_across_nonspiking(i,:,j) = STDP_sequences(j).nonspiking(:,i);
+        sequences_across_length(i,j) = n - sum(STDP_sequences(j).nonspiking(:,i));
+    end
+end
+
+%Calculate ranks for sequences within a learning amount
+ranks_win = zeros(num_to_visualize,num_inits,num_inits);
+for i = 1:num_to_visualize
+    diff_sequences = STDP_sequences(i).spike_order;
+    diff_sequences_nonspiking = STDP_sequences(i).nonspiking;
+    for j = 1:num_inits
+        X_i = diff_sequences(:,j);
+        X_nonspike = find(diff_sequences_nonspiking(:,j));
+        for k = 1:num_inits
+            if j == k
+                ranks_win(i,j,k) = 1;
+            else
+                Y_i = diff_sequences(:,k);
+                Y_nonspike = find(diff_sequences_nonspiking(:,k));
+                nonspiking = unique([X_nonspike',Y_nonspike']);
+                %Only look at neurons spiking in both
+                X_i = setdiff(X_i, nonspiking', 'stable');
+                Y_i = setdiff(Y_i, nonspiking', 'stable');
+                new_n = (length(X_i)+length(Y_i))/2;
+                d = zeros(1,parameters.n);
+                for l = 1:parameters.n
+                    %find the ranks of each neuron
+                    ix_i = find(X_i == l);
+                    iy_i = find(Y_i == l);
+                    if ~isempty(ix_i) && ~isempty(iy_i) %if both are spiking
+                        d(1,l) = ix_i - iy_i;
+                    end
+                end
+                ranks_win(i,j,k) = 1 - (6*sum(d.^2))/(new_n*(new_n^2 - 1));
+                ranks_win(i,k,j) = ranks_win(i,j,k);
+            end
+        end
+    end
+end
+clear i j diff_sequences diff_sequences_nonspiking X_i X_nonspike k Y_i ...
+    Y_nonspike nonspiking new_n d l ix_i iy_i
+
+ranks_win_vec = struct;
+for i = 1:num_to_visualize
+    vec = [];
+    for j = 1:num_inits-1
+        for k = j+1:num_inits
+            vec(end+1) = ranks_win(i,j,k); %#ok<SAGROW>
+        end
+    end
+    ranks_win_vec(i).ranks = vec(~isnan(vec));
+    ranks_win_vec(i).avg = mean(ranks_win_vec(i).ranks);
+end
+clear i vec j k
+
+% Visualize histograms of w/in trial correlations
+f2 = figure;
+axes = [];
+%To order all sequences by a particular firing sequence, uncomment the
+%following and select which sequence to order by by changing the y-index
+% STDP_order = same_sequences(:,1);
+for i = 1:num_to_visualize
+    ax = subplot(subplot_x,subplot_y,i);
+    histogram(ranks_win_vec(i).ranks)
+    hold on
+    xline(ranks_win_vec(i).avg)
+    xlabel('Spearman Rank Correlation')%,'FontSize',16)
+    ylabel('Number')%,'FontSize',16)
+    title(strcat('Repeats = ',string(num_repeats(i))))
+    axes = [axes, ax]; %#ok<AGROW>
+end
+linkaxes(axes)
+sgtitle('Across-Initialization Correlation as a Function of Learning')
+savefig(f2,strcat(load_path,'/seq_corr_hist_after_learning.fig'))
+saveas(f2,strcat(load_path,'/seq_corr_hist_after_learning.jpg'))
+clear i ax axes
+
+% Visualize images of w/in trial correlations
+f3 = figure;
+axes = [];
+%To order all sequences by a particular firing sequence, uncomment the
+%following and select which sequence to order by by changing the y-index
+for i = 1:num_to_visualize
+    ax = subplot(subplot_x,subplot_y,i);
+    imagesc(squeeze(ranks_win(i,:,:)))
+    colorbar()
+    xlabel('Number of Initializations')%,'FontSize',16)
+    ylabel('Number of Initializations')%,'FontSize',16)
+    title(strcat('Repeats = ',string(num_repeats(i))))
+    axes = [axes, ax]; %#ok<AGROW>
+end
+linkaxes(axes)
+sgtitle('Across-Initialization Correlation as a Function of Learning')
+savefig(f3,strcat(load_path,'/seq_corr_im_after_learning.fig'))
+saveas(f3,strcat(load_path,'/seq_corr_im_after_learning.jpg'))
+clear i ax axes
+
+%Calculate ranks for sequences across learning rules
+ranks_across = zeros(num_inits,num_to_visualize,num_to_visualize);
+for i = 1:num_inits
+    diff_sequences = squeeze(sequences_across(i,:,:));
+    diff_sequences_nonspiking = squeeze(sequences_across_nonspiking(i,:,:));
+    for j = 1:num_to_visualize
+        X_i = diff_sequences(:,j);
+        X_nonspike = find(diff_sequences_nonspiking(:,j));
+        for k = 1:num_to_visualize
+            if j == k
+                ranks_across(i,k,j) = 1;
+            else
+                Y_i = diff_sequences(:,k);
+                Y_nonspike = find(diff_sequences_nonspiking(:,k));
+                nonspiking = unique([X_nonspike',Y_nonspike']);
+                %Only look at neurons spiking in both
+                X_i = setdiff(X_i, nonspiking', 'stable');
+                Y_i = setdiff(Y_i, nonspiking', 'stable');
+                new_n = (length(X_i)+length(Y_i))/2;
+                d = zeros(1,parameters.n);
+                for l = 1:parameters.n
+                    %find the ranks of each neuron
+                    ix_i = find(X_i == l);
+                    iy_i = find(Y_i == l);
+                    if ~isempty(ix_i) && ~isempty(iy_i) %if both are spiking
+                        d(1,l) = ix_i - iy_i;
+                    end
+                end
+                ranks_across(i,j,k) = 1 - (6*sum(d.^2))/(new_n*(new_n^2 - 1));
+                ranks_across(i,k,j) = ranks_across(i,j,k) ;
+            end
+        end
+    end
+end
+clear i j diff_sequences diff_sequences_nonspiking X_i X_nonspike k Y_i ...
+    Y_nonspike nonspiking new_n d l ix_i iy_i
+
+ranks_across_vec = struct;
+for i = 1:num_inits
+    vec = [];
+    for j = 1:num_to_visualize-1
+        for k = j+1:num_to_visualize
+            vec(end+1) = ranks_win(i,j,k); %#ok<SAGROW>
+        end
+    end
+    ranks_across_vec(i).ranks = vec(~isnan(vec));
+    ranks_across_vec(i).avg = mean(ranks_across_vec(i).ranks);
+end
+clear i vec j k
 
 
+% Visualize images of across trial correlations
+f4 = figure;
+axes = [];
+%To order all sequences by a particular firing sequence, uncomment the
+%following and select which sequence to order by by changing the y-index
+for i = 1:num_inits
+    ax = subplot(subplot_x,subplot_y,i);
+    imagesc(squeeze(ranks_across(i,:,:)))
+    colorbar()
+    xlabel('Number of Repeats')%,'FontSize',16)
+    ylabel('Number of Repeats')%,'FontSize',16)
+    title([strcat('Initialization = ',string(i));strcat('Sequence length =',string(sequences_across_length(i,1)))])
+    axes = [axes, ax]; %#ok<AGROW>
+end
+linkaxes(axes)
+sgtitle('Same Initialization Correlation as a Function of Learning')
+savefig(f4,strcat(load_path,'/same_seq_corr_after_learning.fig'))
+saveas(f4,strcat(load_path,'/same_seq_corr_after_learning.jpg'))
+clear i ax axes
+
+% Sequence length as a function of learning
+f5 = figure;
+axes = [];
+for i = 1:num_inits
+    ax = subplot(subplot_x,subplot_y,i);
+    plot(sequences_across_length(i,:))
+    xlabel('Number of Repeats')
+    ylabel('Sequence Length')
+    title(strcat('Initialization = ',string(i)))
+    axes = [axes, ax]; %#ok<AGROW>
+end
+sgtitle('Same Initialization Length as a Function of Learning')
+savefig(f5,strcat(load_path,'/same_seq_len_after_learning.fig'))
+saveas(f5,strcat(load_path,'/same_seq_len_after_learning.jpg'))
+clear i ax axes

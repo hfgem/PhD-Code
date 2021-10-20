@@ -24,19 +24,19 @@ tau_stdp = 5*10^(-3); %STDP time constant (s)
 E_K = -80*10^(-3); %potassium reversal potential (V) %-75 or -80 mV
 E_L = -70*10^(-3); %leak reversal potential (V) %-60 - -70 mV range
 G_L = 25*10^(-9); %leak conductance (S) %10 - 30 nS range
-C_m = 0.5*10^(-9); %total membrane capacitance (F) %Huge range from 0.1 - 100 pF
+C_m = 0.4*10^(-9); %total membrane capacitance (F) %Huge range from 0.1 - 100 pF
 V_m_noise = 10^(-4); %magnitude of noise to use in membrane potential simulation (V)
 V_th = -50*10^(-3); %threshold membrane potential (V)
 V_reset = -70*10^(-3); %reset membrane potential (V)
 V_syn_E = 0; %synaptic reversal potential (excitatory)
 V_syn_I = -70*10^(-3); %synaptic reversal potential (inhibitory) %generally -70 pr -80 mV
 %______Split del_G_syn______
-del_G_syn_E = 8*10^(-9); %synaptic conductance step following spike (S)
+del_G_syn_E = 2*10^(-9); %synaptic conductance step following spike (S)
 del_G_syn_I = 8*10^(-9); %synaptic conductance step following spike (S)
 %___________________________
 del_G_sra = 200*10^(-9); %spike rate adaptation conductance step following spike %ranges from 1-200 *10^(-9) (S)
 %If want to have STDP, change connectivity_gain to > 0.
-connectivity_gain = 0; %0.002; %amount to increase or decrease connectivity by with each spike (more at the range of 0.002-0.005)
+connectivity_gain = 0; %0.005; %amount to increase or decrease connectivity by with each spike (more at the range of 0.002-0.005)
 IEI = 0.05; %inter-event-interval (s) the elapsed time between spikes to count separate events
 %How spikes are initiated:
 %'cluster' sets a cluster to threshold;
@@ -48,13 +48,11 @@ type = 'current'; %'neuron'; %'cluster';
 % I_Hz = 1; %frequency of input - 1 Hz or 60 bpm, 4-8 Hz for theta rhythm
 % I_in = I_coeff*(0.5 + 0.5*sin(I_Hz*2*pi*x_in)); %Approximately theta wave input current
 %Noisy input: (uncomment if desired)
-I_coeff = 2.7; %set to 0 for no input current
+I_coeff = 2.7; %2.7; %set to 0 for no input current
 I_scale = 1*10^(-9); %sets the scale of the current input
 
 %Calculate connection probabilites
 conn_prob = 0.08; %set a total desired connection probability
-conn_mu = 0.5;
-conn_sig = 0.25;
 p_E = 0.75; %probability of an excitatory neuron
 
 %Event Statistics
@@ -162,7 +160,8 @@ for i = 1:10 %how many different network structures to test
     network(1).I_indices = I_indices;
     network(1).E_indices = E_indices;
     save(strcat(net_save_path,'/network.mat'),'network')
-    clear network %to save space
+    
+    clear cluster_mat conns I_indices E_indices
     
     %RUN MODEL AND CALCULATE
     %Run through every cluster initialization and store relevant data and
@@ -201,10 +200,11 @@ for i = 1:10 %how many different network structures to test
         all_fr = sum(spikes_V_m,2)/parameters.t_max;
         max_fr = max(all_fr);
         avg_fr = mean(all_fr);
+        display(avg_fr)
         
         %USE FR AS AN INDICATOR OF GOOD SEQUENCES
         %In hippocampus, Jadhav lab uses 3 Hz as a place-cell cutoff
-        if and(max_fr <= 3, max_fr >= 1) && and(avg_fr <= 2, avg_fr >= 1/(parameters.t_max+1))
+        if and(max_fr <= 4, max_fr >= 1) && and(avg_fr <= 2, avg_fr >= 1/(parameters.t_max+1))
             %Find event times
             events = []; 
             last_start = spikes_t(1);
@@ -224,7 +224,7 @@ for i = 1:10 %how many different network structures to test
                     spike_count = 1;
                 end
             end
-            if last_start ~= last_time %if the last event is a single spike, we don't care about it
+            if (last_start ~= last_time) && (spike_count > parameters.event_cutoff*parameters.n) %weed out events w/ too few spikes
                 events = [events; [last_start, last_time]]; %#ok<AGROW> %add the last interval
             end
             [num_events,~] = size(events);
@@ -288,7 +288,7 @@ for i = 1:10 %how many different network structures to test
             bin_width = 5*10^(-3); %5 ms bin
             bin_size = ceil(bin_width/parameters.dt); %number of timesteps to use in a bin
             for e_i = 1:num_events
-                cluster_spikes = cluster_mat*spikes_V_m(:,events(e_i,1):events(e_i,2));
+                cluster_spikes = network.cluster_mat*spikes_V_m(:,events(e_i,1):events(e_i,2));
                 cluster_mov_sum = movsum(cluster_spikes',bin_size)';
                 normalized_cluster_spikes = cluster_spikes ./ sum(cluster_spikes,1);
                 normalized_cluster_spikes(isnan(normalized_cluster_spikes)) = 0;

@@ -16,17 +16,15 @@ load_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select network.m Lo
 load(strcat(load_path,'/parameters.mat'))
 param_names = fieldnames(parameters);
 
-parameters.del_G_syn_I = 15*10^(-9);
-parameters.tau_syn_E = 8*10^(-3);
-parameters.tau_sra = 35*10^(-3);
-
 %How many tests to run
 num_tests = 10;
 
 %____USER INPUT VALUE____
 %Select which independent parameter(s) to modify
-modify_name = {'del_G_syn_E'};
+modify_name = {'I_coeff'};
 [~,num_mod] = size(modify_name);
+
+parameters.type = 'current';
 
 %Find which parameter indices are being modified
 nonmod = find(strcmp(modify_name{1},param_names) == 0); %nonmodified
@@ -47,7 +45,7 @@ for i = 1:length(mod_ind)
     param_val = parameters.(param_name);
     scale = floor(log10(param_val)); %scale of value - to ensure tests are in proper scale
     %new_params = linspace(max(param_val - (num_tests/2)*10^scale,0),param_val + (num_tests/2)*10^scale,num_tests);
-    new_params = linspace(0,10*10^(-9),num_tests);
+    new_params = linspace(1,2,num_tests);
     new_mod_vals(i,:) = new_params;
 end
 
@@ -128,7 +126,7 @@ for mod_i = 1:num_mod %for each modified variable
         end
         
         %SET UP NETWORK
-        [cluster_mat, conns] = create_clusters(parameters, best_net, 1);
+        [cluster_mat, conns] = create_clusters(parameters_copy, best_net, 1);
         conns_copy = conns; %just a copy of the connections to maintain for reset runs if there's "plasticity"
         %Randomize excitatory and inhibitory connection strengths based on selected
         %probability.
@@ -148,6 +146,8 @@ for mod_i = 1:num_mod %for each modified variable
         network(1).I_indices = I_indices;
         network(1).E_indices = E_indices;
         save(strcat(net_save_path,'/network.mat'),'network')
+        
+        clear cluster_mat conns I_indices E_indices
         
         %RUN MODEL AND CALCULATE
         %Run through every cluster initialization and store relevant data and
@@ -215,7 +215,7 @@ for mod_i = 1:num_mod %for each modified variable
                         spike_count = 1;
                     end
                 end
-                if last_start ~= last_time %if the last event is a single spike, we don't care about it
+                if (last_start ~= last_time) && (spike_count > parameters.event_cutoff*parameters.n) %weed out events w/ too few spikes
                     events = [events; [last_start, last_time]]; %#ok<AGROW> %add the last interval
                 end
                 [num_events,~] = size(events);
@@ -282,7 +282,7 @@ for mod_i = 1:num_mod %for each modified variable
                 bin_width = 5*10^(-3); %5 ms bin
                 bin_size = ceil(bin_width/parameters_copy.dt); %number of timesteps to use in a bin
                 for e_i = 1:num_events
-                    cluster_spikes = cluster_mat*spikes_V_m(:,events(e_i,1):events(e_i,2));
+                    cluster_spikes = network.cluster_mat*spikes_V_m(:,events(e_i,1):events(e_i,2));
                     cluster_mov_sum = movsum(cluster_spikes',bin_size)';
                     normalized_cluster_spikes = cluster_spikes ./ sum(cluster_spikes,1);
                     normalized_cluster_spikes(isnan(normalized_cluster_spikes)) = 0;

@@ -10,8 +10,6 @@ function [cluster_mat, conns] = create_clusters(parameters, seed, include_all)
     %       clusters = number of clusters of neurons
     %       cluster_n = number of neurons in a cluster
     %       cluster_prob = intra-cluster connection probability
-    %       conn_mu = mean connection strength
-    %       conn_sig = std of connection strength
     %   seed = random number generator seed
     %   include_all = binary value of whether to include all neurons in
     %       clusters (1) or not (0).
@@ -57,14 +55,11 @@ function [cluster_mat, conns] = create_clusters(parameters, seed, include_all)
     for i = 1:parameters.clusters
         ord = find(cluster_mat(i,:));
         ord_len = length(ord);
-        conns(ord,ord) = conns(ord,ord) + (rand(ord_len,ord_len) <= cluster_prob);
+        conns(ord,ord) = conns(ord,ord) + (rand(ord_len,ord_len) <= parameters.cluster_prob);
     end
     
     %Remove self-connectivity
     for i = 1:parameters.n
         conns(i,i) = 0;
     end
-    
-    %Modify connection strengths to follow conn_mu and conn_sig
-    conns = conns.*(conn_sig*randn(parameters.n,parameters.n) + conn_mu);
 end

@@ -108,7 +108,6 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
     elseif strcmp(parameters.type,'neuron')
         rng(seed)
         neur_start = rand(parameters.n,1) <= 0.05;
-        %neur_start = randi(parameters.n); %just for single spike tests
         %Set the membrane potential of spiking neurons to threshold
         V_m(neur_start,1) = parameters.V_th; 
     elseif strcmp(parameters.type,'current')
@@ -160,7 +159,7 @@ function [V_m, G_sra, G_syn_I, G_syn_E, I_syn, conns] = lif_sra_calculator_postr
         %Calculate membrane potential using integration method
         V_ss = (I_app + parameters.G_L*parameters.E_L + G_sra(:,t)*parameters.E_K)./(parameters.G_L + G_sra(:,t) + G_syn_E(:,t) + G_syn_I(:,t)); %"steady state" calculation
         taueff = parameters.C_m ./(parameters.G_L + G_sra(:,t) + G_syn_E(:,t) + G_syn_I(:,t)); %timescale for change in the membrane potential
-        V_m(:,t+1) = V_ss + (V_m(:,t) - V_ss).*exp(-parameters.dt ./taueff) + randn([parameters.n,1])*parameters.V_m_noise; %MAKE NOISE MAGNITUDE A PARAM %the randn portion can be removed if you'd prefer no noise
+        V_m(:,t+1) = V_ss + (V_m(:,t) - V_ss).*exp(-parameters.dt ./taueff) + randn([parameters.n,1])*parameters.V_m_noise; %the randn portion can be removed if you'd prefer no noise
         V_m(spikers,t+1) = parameters.V_reset; %update those that just spiked to reset
         %______________________________________
         %Update next step conductances
