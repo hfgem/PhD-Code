@@ -44,8 +44,7 @@ for i = 1:length(mod_ind)
     param_name = param_names{mod_ind(i)};
     param_val = parameters.(param_name);
     scale = floor(log10(param_val)); %scale of value - to ensure tests are in proper scale
-    %new_params = linspace(max(param_val - (num_tests/2)*10^scale,0),param_val + (num_tests/2)*10^scale,num_tests);
-    new_params = linspace(1,2,num_tests);
+    new_params = linspace(max(param_val - (num_tests/2)*10^scale,0),param_val + (num_tests/2)*10^scale,num_tests);
     new_mod_vals(i,:) = new_params;
 end
 
