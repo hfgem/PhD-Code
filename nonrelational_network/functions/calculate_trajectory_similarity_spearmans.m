@@ -43,7 +43,7 @@ function [ranks, ranks_mod] = calculate_trajectory_similarity_spearmans(n, ...
             [num_seq,~] = size(sequence_names);
             for j = 1:num_seq
                 rank_vals = network_spike_sequences(i).spike_ranks.(sequence_names{j});
-                if length(find(rank_vals == 0)) < 0.25*length(rank_vals) %at least 1/4 of the neurons participate in the sequence
+                if length(find(rank_vals == 0)) < 0.75*length(rank_vals) %at least 1/4 of the neurons participate in the sequence
                     all_ranks = [all_ranks; rank_vals]; %#ok<AGROW>
                 end
             end  

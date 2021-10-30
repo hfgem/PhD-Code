@@ -314,7 +314,8 @@ end
 %simply requires stored data from prior runs of earlier code blocks.
 
 %Select and load data to analyze
-net_save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Network Save Folder'); %Have user input where they'd like the output stored
+%Most networks from current initializations are good.
+net_save_path = uigetdir('/Users/hannahgermaine/Documents/PhD/','Select Network Save Folder'); %Have user input what data they want to analyze
 slashes = find(net_save_path == '/');
 save_path = net_save_path(1:slashes(end));
 load(strcat(save_path,'/parameters.mat'))
@@ -329,99 +330,116 @@ for i = 1:inits
     try
         isempty(network_spike_sequences(i).events);
         if ~isempty(network_spike_sequences(i).events)
-            viable_inits(end+1) = i;
+            viable_inits(end+1) = i; %#ok<SAGROW>
         end
     end
 end
 
-%Create a shuffled dataset based on the viable sequences
-shuffle_n = 100;
-%   First generate shuffled data
-[shuffled_spike_sequences] = generate_shuffled_trajectories(n,...
-    shuffle_n, network_spike_sequences, viable_inits);
-shuffled_viable_inits = [1:shuffle_n];
+if length(viable_inits) ~= 1
+    %Create a shuffled dataset based on the viable sequences
+    shuffle_n = 100;
+    %   First generate shuffled data
+    [shuffled_spike_sequences] = generate_shuffled_trajectories(n,...
+        shuffle_n, network_spike_sequences, viable_inits);
+    shuffled_viable_inits = [1:shuffle_n];
 
-%=====SPEARMAN'S RANK CORRELATIONS=====
+    %=====SPEARMAN'S RANK CORRELATIONS=====
 
-%_____Real Data Ranks_____
-%ranks = Spearman's rank correlation including nonspiking
-%ranks_mod = Spearman's rank correlation excluding nonspiking
-[ranks, ranks_mod] = calculate_trajectory_similarity_spearmans(n, ...
-    viable_inits, network_spike_sequences);
-%   Remove NaN Values
-ranks_mod(isnan(ranks_mod)) = 0;
-%   Turn Rank Matrices Into Vectors of Unique Ranks
-ranks_vec = nonzeros(triu(ranks,1)); %all above diagonal
-ranks_mod_vec = nonzeros(triu(ranks_mod,1)); %all above diagonal
+    %_____Real Data Ranks_____
+    %ranks = Spearman's rank correlation including nonspiking
+    %ranks_mod = Spearman's rank correlation excluding nonspiking
+    [ranks, ranks_mod] = calculate_trajectory_similarity_spearmans(n, ...
+        viable_inits, network_spike_sequences);
+    %   Remove NaN Values
+    ranks_mod(isnan(ranks_mod)) = 0;
+    %   Turn Rank Matrices Into Vectors of Unique Ranks
+    ranks_vec = nonzeros(triu(ranks,1)); %all above diagonal
+    ranks_mod_vec = nonzeros(triu(ranks_mod,1)); %all above diagonal
 
-%_____Shuffled Data Ranks_____
-%   Get shuffled ranks
-[shuffled_ranks, shuffled_ranks_mod] = calculate_trajectory_similarity_spearmans(n, ...
-    shuffled_viable_inits, shuffled_spike_sequences);
-shuffled_ranks_vec = nonzeros(triu(shuffled_ranks,1)); %all above diagonal
-shuffled_ranks_mod_vec = nonzeros(triu(shuffled_ranks_mod,1)); %all above diagonal
+    %_____Shuffled Data Ranks_____
+    %   Get shuffled ranks
+    [shuffled_ranks, shuffled_ranks_mod] = calculate_trajectory_similarity_spearmans(n, ...
+        shuffled_viable_inits, shuffled_spike_sequences);
+    shuffled_ranks_vec = nonzeros(triu(shuffled_ranks,1)); %all above diagonal
+    shuffled_ranks_mod_vec = nonzeros(triu(shuffled_ranks_mod,1)); %all above diagonal
 
-%_____Calculate Percentiles_____
-ranks_percentile = comp_percentile(shuffled_ranks_vec,mean(ranks_vec));
-ranks_mod_percentile = comp_percentile(shuffled_ranks_mod_vec,mean(ranks_mod_vec));
+    %_____Calculate Percentiles_____
+    ranks_percentile = comp_percentile(shuffled_ranks_vec,mean(ranks_vec));
+    ranks_mod_percentile = comp_percentile(shuffled_ranks_mod_vec,mean(ranks_mod_vec));
 
-%_____Plot Histograms with Percentiles_____
-f = figure;
-ax1 = subplot(1,2,1);
-histogram(shuffled_ranks_vec)
-hold on
-xline(mean(ranks_vec),'-',strcat('Percentile = ',string(ranks_percentile)))
-title('Spearmans Rank Correlation Rhos with Nonspiking Neurons at End')
-ax2 = subplot(1,2,2);
-histogram(shuffled_ranks_mod_vec)
-hold on
-xline(mean(ranks_mod_vec),'-',strcat('Percentile = ',string(ranks_mod_percentile)))
-title('Spearmans Rank Correlation Rhos Excluding Nonspiking Neurons')
-savefig(f,strcat(net_save_path,'/','spearmans_rank_percentiles.fig'))
-saveas(f,strcat(net_save_path,'/','spearmans_rank_percentiles.jpg'))
-close(f)
+    %_____Plot Histograms with Percentiles_____
+    f = figure;
+    ax1 = subplot(1,2,1);
+    histogram(shuffled_ranks_vec,'DisplayName','Shuffled Values')
+    hold on
+    xline(mean(ranks_vec),'-',strcat('Percentile = ',string(ranks_percentile)),'Color','r','DisplayName','Percentile of Average \newline Real Data Value')
+    histogram(ranks_vec,'DisplayName','Real Data Values')
+    legend()
+    title('Spearmans Rank Correlation Rhos with Nonspiking Neurons at End')
+    ax2 = subplot(1,2,2);
+    histogram(shuffled_ranks_mod_vec,'DisplayName','Shuffled Values')
+    hold on
+    xline(mean(ranks_mod_vec),'-',strcat('Percentile = ',string(ranks_mod_percentile)),'Color','r','DisplayName','Percentile of Average \newline Real Data Value')
+    histogram(ranks_mod_vec,'DisplayName','Real Data Values')
+    legend()
+    title('Spearmans Rank Correlation Rhos Excluding Nonspiking Neurons')
+    f.Position = [187,387,1112,410];
+    savefig(f,strcat(net_save_path,'/','spearmans_rank_percentiles.fig'))
+    saveas(f,strcat(net_save_path,'/','spearmans_rank_percentiles.jpg'))
+    saveas(f,strcat(net_save_path,'/','spearmans_rank_percentiles.svg'))
+    close(f)
 
-%=====MATCHING INDICES=====
+    %=====MATCHING INDICES=====
 
-%_____Real Data MIs_____
-%ranks = Spearman's rank correlation including nonspiking
-%ranks_mod = Spearman's rank correlation excluding nonspiking
-[matching_index, matching_index_mod] = calculate_trajectory_similarity_mi(n, ...
-    viable_inits, network_spike_sequences);
-%   Remove NaN Values
-matching_index_mod(isnan(matching_index_mod)) = 0;
-%   Turn Rank Matrices Into Vectors of Unique Ranks
-matching_index_vec = nonzeros(triu(matching_index,1)); %all above diagonal
-matching_index_mod_vec = nonzeros(triu(matching_index_mod,1)); %all above diagonal
+    %_____Real Data MIs_____
+    %ranks = Spearman's rank correlation including nonspiking
+    %ranks_mod = Spearman's rank correlation excluding nonspiking
+    [matching_index, matching_index_mod] = calculate_trajectory_similarity_mi(n, ...
+        viable_inits, network_spike_sequences);
+    %   Remove NaN Values
+    matching_index_mod(isnan(matching_index_mod)) = 0;
+    %   Turn Rank Matrices Into Vectors of Unique Ranks
+    matching_index_vec = nonzeros(triu(matching_index,1)); %all above diagonal
+    matching_index_mod_vec = nonzeros(triu(matching_index_mod,1)); %all above diagonal
 
-%_____Shuffled Data MIs_____
-%   Get shuffled ranks
-[shuffled_matching_index, shuffled_matching_index_mod] = calculate_trajectory_similarity_spearmans(n, ...
-    shuffled_viable_inits, shuffled_spike_sequences);
-shuffled_matching_index_vec = nonzeros(triu(shuffled_matching_index,1)); %all above diagonal
-shuffled_matching_index_mod_vec = nonzeros(triu(shuffled_matching_index_mod,1)); %all above diagonal
+    %_____Shuffled Data MIs_____
+    %   Get shuffled ranks
+    [shuffled_matching_index, shuffled_matching_index_mod] = calculate_trajectory_similarity_spearmans(n, ...
+        shuffled_viable_inits, shuffled_spike_sequences);
+    shuffled_matching_index_vec = nonzeros(triu(shuffled_matching_index,1)); %all above diagonal
+    shuffled_matching_index_mod_vec = nonzeros(triu(shuffled_matching_index_mod,1)); %all above diagonal
 
-%_____Calculate Percentiles_____
-matching_index_percentile = comp_percentile(shuffled_matching_index_vec,mean(matching_index_vec));
-matching_index_mod_percentile = comp_percentile(shuffled_matching_index_mod_vec,mean(matching_index_mod_vec));
+    %_____Calculate Percentiles_____
+    matching_index_percentile = comp_percentile(shuffled_matching_index_vec,mean(matching_index_vec));
+    matching_index_mod_percentile = comp_percentile(shuffled_matching_index_mod_vec,mean(matching_index_mod_vec));
 
-%_____Plot Histograms with Percentiles_____
-f = figure;
-ax1 = subplot(1,2,1);
-histogram(shuffled_matching_index_vec)
-hold on
-xline(mean(matching_index_vec),'-',strcat('Percentile = ',string(matching_index_percentile)))
-title('Matching Indices with Nonspiking Neurons at End')
-ax2 = subplot(1,2,2);
-histogram(shuffled_matching_index_mod_vec)
-hold on
-try %#ok<TRYNC>
-    xline(mean(matching_index_mod_vec),'-',strcat('Percentile = ',string(matching_index_mod_percentile)))
+    %_____Plot Histograms with Percentiles_____
+    f = figure;
+    ax1 = subplot(1,2,1);
+    histogram(shuffled_matching_index_vec,'DisplayName','Shuffled Values')
+    hold on
+    xline(mean(matching_index_vec),'-',strcat('Percentile = ',string(matching_index_percentile)),'Color','r','DisplayName','Percentile of Average \newline Real Data Value')
+    histogram(matching_index_vec,'DisplayName','Real Data Values')
+    legend()
+    title('Matching Indices with Nonspiking Neurons at End')
+    ax2 = subplot(1,2,2);
+    histogram(shuffled_matching_index_mod_vec,'DisplayName','Shuffled Values')
+    hold on
+    try %#ok<TRYNC>
+        xline(mean(matching_index_mod_vec),'-',strcat('Percentile = ',string(matching_index_mod_percentile)),'Color','r','DisplayName','Percentile of Average \newline Real Data Value')
+        histogram(matching_index_mod_vec,'DisplayName','Real Data Values')
+    end
+    legend()
+    title('Matching Indices Excluding Nonspiking Neurons')
+    f.Position = [187,387,1112,410];
+    savefig(f,strcat(net_save_path,'/','MI_percentiles.fig'))
+    saveas(f,strcat(net_save_path,'/','MI_percentiles.jpg'))
+    saveas(f,strcat(net_save_path,'/','MI_percentiles.svg'))
+    close(f)
+
+else
+    disp('Only 1 Sequence')
 end
-title('Matching Indices Excluding Nonspiking Neurons')
-savefig(f,strcat(net_save_path,'/','MI_percentiles.fig'))
-saveas(f,strcat(net_save_path,'/','MI_percentiles.jpg'))
-close(f)
 
 %% Visualize network structure
 %Select data to visualize

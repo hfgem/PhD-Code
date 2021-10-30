@@ -23,8 +23,8 @@ function [shuffled_spike_sequences] = generate_shuffled_trajectories(n,...
     %
     %OUTPUTS:
     %   shuffled_spike_sequences = a structure file with generated spike
-    %       sequences following the statistics of the network spike
-    %       sequences. Fields contained are as follows:
+    %       sequences following the true network spike sequences.
+    %       Fields contained are as follows:
     %           1. spike_order = order of spiking neurons, excluding
     %               nonspiking neurons
     %           2. spike_ranks = vectors for each event of each neuron's
@@ -34,33 +34,27 @@ function [shuffled_spike_sequences] = generate_shuffled_trajectories(n,...
     %               which neurons did not spike (1) and which did (0).
     %_________
     
-    %First gather generated spike sequences statistics
-    spiking_nums = [];
-    for i = viable_inits
-        if ~isempty(network_spike_sequences(i).spike_ranks) %second check
-            sequences = network_spike_sequences(i).spike_order(1);
-            sequence_names = fieldnames(sequences);
-            [num_seq,~] = size(sequence_names);
-            for j = 1:num_seq
-                number_neurons = length(network_spike_sequences(i).spike_order.(sequence_names{j}));
-                if number_neurons >= 0.25*n %at least 1/4 of the neurons participate in the sequence
-                    spiking_nums = [spiking_nums; number_neurons]; %#ok<AGROW>
-                end
-            end  
-        end
-    end   
-    avg_num_spiking = mean(spiking_nums);
-    std_num_spiking = std(spiking_nums);
     
-    %Next generate shuffled data based on spike statistics
+    %Generate shuffled data based on real sequences
     shuffled_spike_sequences = struct;
     for i = 1:shuffle_n
-        %generate spike sequence randomly
-        num_gen = round(avg_num_spiking + std_num_spiking*randn());
-        if num_gen > n
-            num_gen = n;
+        %randomly select a spike sequence
+        v_i = randsample(viable_inits,1);
+        sequences = network_spike_sequences(v_i).spike_order(1);
+        sequence_names = fieldnames(sequences);
+        s_i = randsample(length(sequence_names),length(sequence_names));
+        s_ind = 1;
+        sample_seq = network_spike_sequences(v_i).spike_order.(sequence_names{s_i(s_ind)});
+        while length(sample_seq) < 0.25*n %find a different sample sequence if the one selected is too short
+            s_ind = s_ind + 1;
+            try
+                sample_seq = network_spike_sequences(v_i).spike_order.(sequence_names{s_i(s_ind)});
+            catch
+                break
+            end
         end
-        shuffle_seq = randperm(n,num_gen);
+        %generate shuffle
+        shuffle_seq = sample_seq(randsample(length(sample_seq),length(sample_seq)));
         shuffled_spike_sequences(i).spike_order.sequence_1 = shuffle_seq;
         %store ranks for each neuron
         ranks_vec = zeros(1,n);
@@ -72,6 +66,5 @@ function [shuffled_spike_sequences] = generate_shuffled_trajectories(n,...
         %store nonspiking neurons
         nonspiking_neurons = isnan(ranks_vec./ranks_vec);
         shuffled_spike_sequences(i).nonspiking_neurons.sequence_1 = nonspiking_neurons;
-    end    
-    
+    end
 end
