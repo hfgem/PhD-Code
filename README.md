@@ -1,5 +1,5 @@
 # PhD_Code
-This repository contains a collection otherwise repository-less code written over the course of my PhD.
+This repository contains a collection of otherwise repository-less code written over the course of my PhD.
  
  ## ICA
  A folder for functions related to independent component analysis code.
