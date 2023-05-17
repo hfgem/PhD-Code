@@ -45,13 +45,13 @@ def calibrate(outport, opentime, repeats):
 
         # Setup pi board GPIO ports
 	GPIO.setmode(GPIO.BOARD)
-	GPIO.setup(outport, GPIO.OUT)
+	GPIO.setup([int(outport)], GPIO.OUT)
 
         # Open ports  
 	for rep in range(repeats):
-		GPIO.output(outport, 1)
+		GPIO.output([int(outport)], 1)
 		time.sleep(opentime)
-		GPIO.output(outport, 0)
+		GPIO.output([int(outport)], 0)
 		time.sleep(1)
 
 	print('Calibration procedure complete.')
@@ -87,6 +87,7 @@ def passive(outports, intaninputs, opentimes, itimin, itimax, trials, taste_name
 	random.shuffle(trial_array)
 
 	time.sleep(15)
+	iti = random.randint(itimin, itimax)
 	
 	# Loop through trials
 	trial_counter = np.zeros(len(outports))
@@ -98,9 +99,9 @@ def passive(outports, intaninputs, opentimes, itimin, itimax, trials, taste_name
 		GPIO.output([int(outports[t_i])], 0)
 		GPIO.output([int(intaninputs[t_i])], 0)
 		count += 1
-		iti = random.randint(itimin, itimax)
 		trial_counter[t_i] += 1
 		print('Trial '+str(count)+' of '+str(tot_trials)+' completed. ITI = '+str(iti)+' sec.')
+		iti = random.randint(itimin, itimax)
 		time.sleep(iti)
 
 	print("Total deliveries per tastant:")
@@ -149,6 +150,7 @@ def passive_with_video(outports, intaninputs, opentimes, itimin, itimax, trials,
 
     # A 10 sec wait before things start
 	time.sleep(10)
+	iti = random.randint(itimin, itimax)
 
     # Session one: deliver water and CS only in random order
 	trial_counter = np.zeros(len(outports))
@@ -174,9 +176,9 @@ def passive_with_video(outports, intaninputs, opentimes, itimin, itimax, trials,
                 
                 # Increment the trial counter for the taste by 1
 		trial_counter[t_i] += 1    
-		iti = random.randint(itimin, itimax)
                 # Print number of trials completed
 		print("Trial " + str(np.sum(trial_counter)) + " of " + str(tot_trials) + " completed.")
+		iti = random.randint(itimin, itimax)
 
         # Wait for the iti before delivering next taste
 		time.sleep(iti)
