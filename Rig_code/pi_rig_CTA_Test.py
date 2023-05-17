@@ -19,6 +19,10 @@ print("=========================")
 outport_options = ui.multi_int_loop('\nWhat are the outport indices associated with the tastant lines?')
 intan_options = ui.multi_int_loop('\nWhat are the intan indices associated with the ' + str(len(outport_options)) + ' tastant lines?')
 video = ui.single_option_loop('\nDoes this rig have video set up? / Do you wish to record video?',['Yes','No'])
+if video == 0:
+	video_port = ui.single_int_loop('\nWhat is the video GPIO port?')
+else:
+	video_port = outport_options[0] #Just a placeholder value
 
 repeat_loop = 1
 
@@ -34,7 +38,7 @@ while repeat_loop == 1: #Returns to main menu asking purpose
 		in order, for the given number of seconds. \n")
 		outports_selected = ui.list_loop('\nWhich outports are you using? ', outport_options)
 		dur_selected = ui.single_float_loop('\nHow long should lines be cleared for? ')
-		pf.clearout(outport_options[outports_selected],dur_selected)
+		pf.clearout(np.array(outport_options)[outports_selected],dur_selected)
 		#Check if user wants to perform any more actions
 		repeat_loop = ui.more_stuff_loop()
 		
@@ -46,7 +50,7 @@ while repeat_loop == 1: #Returns to main menu asking purpose
 		dur_selected = ui.single_float_loop('\nHow long would you like to calibrate for? ')
 		repeat_options = [1,3,5]
 		num_repeats = ui.single_option_loop('\nHow many deliveries? ',repeat_options)
-		pf.calibrate(outport_options[outport_selected], opentime = dur_selected, repeats = repeat_options[num_repeats])
+		pf.calibrate(np.array(outport_options)[outport_selected], opentime = dur_selected, repeats = repeat_options[num_repeats])
 		#Check if user wants to perform any more actions
 		repeat_loop = ui.more_stuff_loop()
 	
@@ -57,11 +61,17 @@ while repeat_loop == 1: #Returns to main menu asking purpose
 			print("=========================")
 			print("\nTesting delivery selected. If multiple outports are provided, all will be tested (in order)")
 			outports_selected = ui.list_loop('\nWhich outports would you like to test? ', outport_options)
+			taste_names = [input("\nWhat is the name of the tastant in outport " + str(outport_options[i]) + "? ") for i in outports_selected]
 			dur_selected = ui.multi_float_loop('\nHow long should lines be cleared for?\n'+'Enter comma-separated values for each of these outports:\n'+str(np.array(outport_options)[outports_selected]))
 			iti_min = ui.single_int_loop('\nWhat is the iti minimum? (integer value)')
 			iti_max = ui.single_int_loop('\nWhat is the iti maximum? (integer value)')
-			num_trials = ui.single_int_loop('\nHow many deliveries per outport? (single integer value)')
-			pf.passive(outport_options[outports_selected], intan_options[outports_selected], dur_selected, iti_min, iti_max, num_trials)
+			num_trials = ui.multi_int_loop('\nHow many deliveries per outport?')
+			outports_i = np.array(outport_options)[outports_selected]
+			intan_i = np.array(intan_options)[outports_selected]
+			tastants_i = np.array(taste_names)[outports_selected]
+			trials_i = np.ones(len(outports_selected))*num_trials
+			input("Press enter when ready to begin.")
+			pf.passive(outports_i, intan_i, dur_selected, iti_min, iti_max, num_trials, tastants_i)
 		
 		elif delivery_answer == 1: #CTA induction day
 			print("=========================")
@@ -73,13 +83,18 @@ while repeat_loop == 1: #Returns to main menu asking purpose
 			dur_selected = ui.multi_float_loop('\nWhat are the line delivery times?\n'+'Enter comma-separated values for each of these outports:\n'+str(np.array(outport_options)[outports_selected]))
 			iti_min = ui.single_int_loop('\nWhat is the iti minimum? (integer value)')
 			iti_max = ui.single_int_loop('\nWhat is the iti maximum? (integer value)')
-			num_trials = ui.multi_int_loop('\nHow many deliveries per outport? (list of integers)')
+			num_trials = ui.multi_int_loop('\nHow many deliveries per outport?')
+			outports_i = np.array(outport_options)[outports_selected]
+			intan_i = np.array(intan_options)[outports_selected]
+			input("Press enter when ready to begin.")
 			#Begin delivery protocol - pre-wait + deliveries + post-wait
 			print("=========================")
 			print("Since you selected CTA induction day, there will be a pre- wait time, tastant delivery, and a post- wait time.")
+			print('Beginning Pre-Delivery Wait Time.')
 			for i in tqdm.tqdm(range(pre_wait_time*6)):
 				time.sleep(10)
-			pf.passive(outport_options[outports_selected], intan_options[outports_selected], dur_selected, iti_min, iti_max, num_trials)
+			pf.passive(outports_i, intan_i, dur_selected, iti_min, iti_max, num_trials, taste_names)
+			print('Beginning Post-Delivery Wait Time.')
 			for i in tqdm.tqdm(range(post_wait_time*6)):
 				time.sleep(10)
 		
@@ -106,6 +121,7 @@ while repeat_loop == 1: #Returns to main menu asking purpose
 			print("Since you selected CTA test day, there will be a pre- wait time, three delivery segments, and a post- wait time.")
 			segment_tastants = [ui.list_loop("\nWhich tastants are being delivered in part " + str(i+1) + "? ",tastant_list) for i in range(3)]
 			segment_num_trials = [ui.multi_int_loop('\nHow many deliveries per outport in part ' + str(i+1) + ' for tastants ' + str(np.array(tastant_list)[segment_tastants[i]]) + '?') for i in range(3)]
+			input("Press enter when ready to begin.")
 			#Begin delivery protocol - pre-wait + deliveries + post-wait
 			print("=========================")
 			print('Beginning Pre-Delivery Wait Time.')
@@ -127,7 +143,7 @@ while repeat_loop == 1: #Returns to main menu asking purpose
 				#Run deliveries
 				print("Beginning deliveries.")
 				if video == 0:
-					pf.passive_with_video(outports_i, intan_i, dur_i, iti_min, iti_max, trial_num_i, tastants_i)
+					pf.passive_with_video(outports_i, intan_i, dur_i, iti_min, iti_max, trial_num_i, tastants_i, video_port)
 				else:
 					pf.passive(outports_i, intan_i, dur_i, iti_min, iti_max, trial_num_i, tastants_i)
 			print('Beginning Post-Delivery Wait Time.')
@@ -137,4 +153,4 @@ while repeat_loop == 1: #Returns to main menu asking purpose
 		repeat_loop = ui.more_stuff_loop()
 
 #After performing actions, ensure everything is cleared
-pf.clearall()
+pf.clearall(outport_options,intan_options,video_port)
