@@ -108,7 +108,7 @@ def passive(outports, intaninputs, opentimes, itimin, itimax, trials, taste_name
 	[print("\t" + taste_names[i] + ": " + str(int(trial_counter[i]))) for i in range(len(outports))]
 
 # Passive deliveries with video recordings for Christina's CTA test protcol with 40 trials each of water, saccharin, quinine
-def passive_with_video(outports, intaninputs, opentimes, itimin, itimax, trials, taste_names, video_cue):
+def passive_with_video(outports, intaninputs, opentimes, itimin, itimax, trials, taste_names, video_cue, directory, segment_num):
 	"""
 	INPUTS:
 		- outports: a list of integers of tastant delivery lines
@@ -119,6 +119,7 @@ def passive_with_video(outports, intaninputs, opentimes, itimin, itimax, trials,
 		- trials: a list of integers of how many trials per taste
 		- taste_names: a list of strings of each outport's taste name
 		- video_cue: single integer of the video port
+		- directory: directory to store video recordings
 	OUTPUT: tastant deliveries according to the input information.
 	"""
 
@@ -143,8 +144,6 @@ def passive_with_video(outports, intaninputs, opentimes, itimin, itimax, trials,
 		trial_array.extend([i for j in range(trials[i])])
 	random.shuffle(trial_array)
 
-    # Ask the user for the directory to save the video files in	
-	directory = easygui.diropenbox(msg = 'Select the directory to save the videos from this experiment', title = 'Select directory')
     # Change to that directory
 	os.chdir(directory)
 
@@ -156,7 +155,9 @@ def passive_with_video(outports, intaninputs, opentimes, itimin, itimax, trials,
 	trial_counter = np.zeros(len(outports))
 	for i in trial_array:
         # Make filename, and start the video in a separate process
-		process = Popen('sudo streamer -q -c /dev/video0 -s 1280x720 -f jpeg -t 180 -r 30 -j 75 -w 0 -o ' + taste_names[i] + '_trial_' + str(trial_counter[i]) + '.avi', shell = True, stdout = None, stdin = None, stderr = None, close_fds = True)
+		process = Popen('sudo streamer -q -c /dev/video0 -s 1280x720 -f jpeg -t 180 -r 30 -j 75 -w 0 -o ' + 
+				  '_segment_' + str(int(segment_num)) + '_' + taste_names[i] + '_trial_' + str(int(trial_counter[i])) + 
+				  '.avi', shell = True, stdout = None, stdin = None, stderr = None, close_fds = True)
 
         # Switch on the cue light
 		GPIO.output(video_cue, 1)

@@ -6,7 +6,7 @@ in a CTA-induction and CTA-testing protocol.
 import pi_rig_functions as pf
 import user_input_functions as ui
 import numpy as np
-import time, tqdm, os
+import time, tqdm, os, easygui
 file_path = ('/').join(os.path.abspath(__file__).split('/')[0:-1])
 os.chdir(file_path)
 
@@ -20,7 +20,9 @@ outport_options = ui.multi_int_loop('\nWhat are the GPIO outport indices associa
 intan_options = ui.multi_int_loop('\nWhat are the GPIO intan indices associated with the ' + str(len(outport_options)) + ' tastant lines?')
 video = ui.single_option_loop('\nDoes this rig have video set up? / Do you wish to record video?',['Yes','No'])
 if video == 0:
-	video_port = ui.single_int_loop('\nWhat is the video GPIO port?')
+	video_port = ui.single_int_loop('\nWhat is the video cue light GPIO port?')
+	# Ask the user for the directory to save the video files in	
+	directory = easygui.diropenbox(msg = 'Select the directory to save the videos from this experiment', title = 'Select directory')
 else:
 	video_port = outport_options[0] #Just a placeholder value
 
@@ -71,7 +73,11 @@ while repeat_loop == 1: #Returns to main menu asking purpose
 			tastants_i = np.array(taste_names)[outports_selected]
 			trials_i = np.ones(len(outports_selected))*num_trials
 			input("Press enter when ready to begin.")
-			pf.passive(outports_i, intan_i, dur_selected, iti_min, iti_max, num_trials, tastants_i)
+			print("Beginning deliveries.")
+			if video == 0:
+				pf.passive_with_video(outports_i, intan_i, dur_selected, iti_min, iti_max, num_trials, tastants_i, video_port, directory, segment_num=0)
+			else:
+				pf.passive(outports_i, intan_i, dur_selected, iti_min, iti_max, num_trials, tastants_i)
 		
 		elif delivery_answer == 1: #CTA induction day
 			print("=========================")
@@ -88,7 +94,11 @@ while repeat_loop == 1: #Returns to main menu asking purpose
 			print('Beginning Pre-Delivery Wait Time.')
 			for i in tqdm.tqdm(range(pre_wait_time*6)):
 				time.sleep(10)
-			pf.passive(outports_i, intan_i, dur_selected, iti_min, iti_max, num_trials, taste_names)
+			print("Beginning deliveries.")
+			if video == 0:
+				pf.passive_with_video(outports_i, intan_i, dur_selected, iti_min, iti_max, num_trials, taste_names, video_port, directory, segment_num=0)
+			else:
+				pf.passive(outports_i, intan_i, dur_selected, iti_min, iti_max, num_trials, taste_names)
 			print('Beginning Post-Delivery Wait Time.')
 			for i in tqdm.tqdm(range(post_wait_time*6)):
 				time.sleep(10)
@@ -123,7 +133,7 @@ while repeat_loop == 1: #Returns to main menu asking purpose
 				#Run deliveries
 				print("Beginning deliveries.")
 				if video == 0:
-					pf.passive_with_video(outports_i, intan_i, dur_i, iti_min, iti_max, trial_num_i, tastants_i, video_port)
+					pf.passive_with_video(outports_i, intan_i, dur_i, iti_min, iti_max, trial_num_i, tastants_i, video_port, directory, segment_num=i)
 				else:
 					pf.passive(outports_i, intan_i, dur_i, iti_min, iti_max, trial_num_i, tastants_i)
 			print('Beginning Post-Delivery Wait Time.')
