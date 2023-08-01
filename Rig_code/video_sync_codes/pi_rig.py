@@ -63,7 +63,12 @@ def passive(outports=[37, 36, 38, 40, 32, 16, 18],
     intaninputs=[15, 19, 21, 23, 11, 12, 13], 
     opentimes=[0.01, 0.01, 0.01, 0.01, 0.01, 0.01], 
     itimin=22, itimax=22, trials=30):
-
+	
+	# Ask the user for the directory to save the video files in
+    directory = easygui.diropenbox(msg='Select the directory to save the delivery times from this experiment.', title='Select directory')
+	# Change to that directory
+    os.chdir(directory)
+	
     # Setup pi board GPIO ports
     GPIO.setmode(GPIO.BOARD)
     for i in outports:
@@ -75,12 +80,14 @@ def passive(outports=[37, 36, 38, 40, 32, 16, 18],
     tot_trials = len(outports) * trials
     count = 0
     trial_array = trials * list(np.arange(len(outports)))
+    time_array = [] #Store delivery times
     random.shuffle(trial_array)
 
     time.sleep(15)
     print(trial_array)
     # Loop through trials
     for i in trial_array:
+        time_array.append(time.ctime())
         GPIO.output(outports[i], 1) #opens the solenoid
         GPIO.output(intaninputs[i], 1) #changes dig_in signal to 1
         time.sleep(opentimes[i]) #waits for opentime
@@ -93,10 +100,17 @@ def passive(outports=[37, 36, 38, 40, 32, 16, 18],
         time.sleep(iti)
 
     print('Passive deliveries completed')
+	
+	#Save csv of trial delivery times
+    csv_name = 'output_times.csv'
+    with open(csv_name, 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=' ',
+	                            quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        for r_i in range(len(time_array)):
+            spamwriter.writerow(time_array[r_i])
+			
+    print('Delivery times .csv saved.')
     
-
-
-
 
 def passive_cue(
     outports=[7, 11, 13, 16, 31, 32, 33, 35, 36, 37, 38, 40], 
@@ -117,12 +131,14 @@ def passive_cue(
     count = 0
     #trial_array = trials * range(len(outports))
     trial_array = trials * list(np.arange(len(outports)))
+    time_array = [] #Store delivery times
     random.shuffle(trial_array)
 
     time.sleep(3)
 
     # Loop through trials
     for i in trial_array:
+        time_array.append(time.ctime())
         GPIO.output(cue_input, 1)
         #time.sleep(1) #if you want cue on before taste delivery, uncomment
         #GPIO.output(cue_input, 0)
@@ -142,83 +158,16 @@ def passive_cue(
         time.sleep(iti)
 
     print('Passive deliveries completed')
-
-# Passive deliveries with video recordings
-
-
-def passive_with_video(
-        outports=[7, 11, 13, 16, 18, 31, 32, 33, 35, 36, 37, 38, 40],
-        intan_inports=[15, 19, 21, 23],
-        tastes=['water', 'sucrose', 'NaCl', 'quinine'],
-        opentimes=[0.015, 0.015, 0.015, 0.015],
-        iti=15,
-        repeats=30):
-
-    # Set the outports to outputs
-    GPIO.setmode(GPIO.BOARD)
-    for i in outports:
-        GPIO.setup(i, GPIO.OUT)
-
-    # Set the input lines for Intan to outputs
-    for i in intan_inports:
-        GPIO.setup(i, GPIO.OUT)
-        GPIO.output(i, 0)
-
-    # Define the port for the video cue light, and set it as output
-    video_cue = 16
-    GPIO.setup(video_cue, GPIO.OUT)
-
-    # Make an ordered array of the number of tastes (length of outports)
-    taste_array = []
-    for i in range(len(outports)*repeats):
-        taste_array.append(int(i % len(outports)))
-
-    # Randomize the array of tastes, and print it
-    np.random.shuffle(taste_array)
-    print("Chosen sequence of tastes:" + '\n' + str(taste_array))
-
-    # Ask the user for the directory to save the video files in
-    directory = easygui.diropenbox(
-        msg='Select the directory to save the videos from this experiment', title='Select directory')
-    # Change to that directory
-    os.chdir(directory)
-
-    # A 10 sec wait before things start
-    time.sleep(10)
-
-    # Deliver the tastes according to the order in taste_array
-    trials = [1 for i in range(len(outports))]
-    for taste in taste_array:
-        # Make filename, and start the video in a separate process
-        process = Popen('sudo streamer -q -c /dev/video0 -s 1280x720 -f jpeg -t 180 -r 30 -j 75 -w 0 -o ' +
-                        tastes[taste] + '_trial_' + str(trials[taste]) + '.avi', shell=True, stdout=None, stdin=None, stderr=None, close_fds=True)
-
-        # Wait for 2 sec, before delivering tastes
-        time.sleep(2)
-
-        # Switch on the cue light
-        GPIO.output(video_cue, 1)
-
-        # Deliver the taste, and send outputs to Intan
-        GPIO.output(outports[taste], 1)
-        GPIO.output(intan_inports[taste], 1)
-        time.sleep(opentimes[taste])
-        GPIO.output(outports[taste], 0)
-        GPIO.output(intan_inports[taste], 0)
-
-        # Switch the light off after 50 ms
-        time.sleep(0.050)
-        GPIO.output(video_cue, 0)
-
-        # Increment the trial counter for the taste by 1
-        trials[taste] += 1
-
-        # Print number of trials completed
-        print("Trial " + str(np.sum(trials) - len(outports)) +
-              " of " + str(len(taste_array)) + " completed.")
-
-        # Wait for the iti before delivering next taste
-        time.sleep(iti)
+	
+	#Save csv of trial delivery times
+    csv_name = 'output_times.csv'
+    with open(csv_name, 'w', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=' ',
+	                            quotechar='|', quoting=csv.QUOTE_MINIMAL)
+        for r_i in range(len(time_array)):
+            spamwriter.writerow(time_array[r_i])
+			
+    print('Delivery times .csv saved.')
 
 
 # Basic nose poking procedure to train poking for discrimination 2-AFC task
