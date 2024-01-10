@@ -13,6 +13,8 @@ a csv file
 import os, easygui, subprocess, csv
 import ntplib
 from time import ctime
+import time
+from datetime import datetime
 
 # Ask the user for the directory to save the video files in
 directory = easygui.diropenbox(msg='Select the directory to save the videos from this experiment', title='Select directory')
@@ -34,31 +36,37 @@ while ask_loop == 1:
 		print("Please try again. Incorrect entry.")
 
 #Grab current date/time from Raspberry Pi
-ask_loop = 1
-while ask_loop == 1:
-	raspberry_pi_ip = input('What is the IP address of the Raspberry Pi running deliveries?')
-	response = os.system("ping -c 1 " + raspberry_pi_ip)
-	#and then check the response...
-	if response == 0:
-		print(f"{raspberry_pi_ip} is reachable!")
-		ask_loop = 0
-	else:
-		print(f"{raspberry_pi_ip} is down! Check why and try again.")
+raspberry_pi_ip = input('What is the IP address of the Raspberry Pi running deliveries?')
+# ask_loop = 1
+# while ask_loop == 1:
+# 	raspberry_pi_ip = input('What is the IP address of the Raspberry Pi running deliveries?')
+# 	response = os.system("ping -c 1 " + raspberry_pi_ip)
+# 	#and then check the response...
+# 	if response == 0:
+# 		print(f"{raspberry_pi_ip} is reachable!")
+# 		ask_loop = 0
+# 	else:
+# 		print(f"{raspberry_pi_ip} is down! Check why and try again.")
 
 c = ntplib.NTPClient() #Set up ntp client
-
 #Create a .csv file in the video location and add current date/time
 csv_name = filename + '_times.csv'
 with open(csv_name, 'w', newline='') as csvfile:
 	spamwriter = csv.writer(csvfile, delimiter=' ',
                             quotechar='|', quoting=csv.QUOTE_MINIMAL)
 	response = c.request(raspberry_pi_ip)
-	cur_time = ctime(response.tx_time) #Print current Pi time
-	spamwriter.writerow(cur_time)
+	t = datetime.fromtimestamp(response.tx_time)
+	cur_time = t.strftime("%a %b %d %H:%M:%S.%f")
+	call_time = cur_time
+	spamwriter.writerow(call_time)
 
-# Todo: may need to first run the record line and then save to .csv - opening OBS apparently can take 5 seconds? Need to test.
-#Start the video recording process
-obs_call = '--startrecording'
-#--profile "name"
-record_video = 'sudo streamer -q -c /dev/video0 -s 1280x720 -f jpeg -t 180 -r 60 -j 75 -w 0 -o ' + filename + '.avi' #Need to test how to implement next part:
 subprocess.run(record_video)
+
+with open(csv_name, 'a+', newline='') as csvfile:
+	spamwriter = csv.writer(csvfile, delimiter=' ',
+                            quotechar='|', quoting=csv.QUOTE_MINIMAL)
+	response = c.request(raspberry_pi_ip)
+	t = datetime.fromtimestamp(response.tx_time)
+	cur_time = t.strftime("%a %b %d %H:%M:%S.%f")
+	end_time = cur_time
+	spamwriter.writerow(end_time)

@@ -7,7 +7,7 @@ On the Raspberry pi:
 - (OPTIONAL cont...) In the open NTP file, modify the pool ... iburst lines with a server from the NTP server list: https://support.ntp.org/bin/view/Servers/NTPPoolServers
 - Restart the NTP server: sudo service ntp restart
 - Check the status of the NTP service: sudo service ntp status
-- Configure the firewall to allow the other computer to access the NTP server (opens port 123 for incoming traffic): sudo ufw allow from any to any port 123 proto udp
+- (IF THERE'S A FIREWALL) Configure the firewall to allow the other computer to access the NTP server (opens port 123 for incoming traffic): sudo ufw allow from any to any port 123 proto udp
     
 On the video recording computer:
 To set the computer time to the Raspberry Pi's:
@@ -26,10 +26,13 @@ To set the computer time to the Raspberry Pi's:
 - Restart the NTP server: sudo service ntp restart
 
 To set up Python to grab Raspberry Pi's time:
-- Now install ntplib for python: pip install ntplib
+- Install ntplib for python: pip3 install ntplib
+- Install easygui for python: pip3 install easygui
 
 # CONTENTS:
 ## pi_rig.py
 Functions to run the rig.
 ## launch_video.py
 Code to grab the pi time, trigger video recording, and record the start time of the video.
+
+#Need .mp4 format for above ^
